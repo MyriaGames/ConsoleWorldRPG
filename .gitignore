@@ -364,3 +364,7 @@ FodyWeavers.xsd
 
 ## User account/save data (contains credentials, not shipped content)
 Data/users/
+
+## Per-installation trust-on-first-use server certificate store, never meant to be shipped/shared
+Data/misc/trusted_certs.json
+Data/Misc/trusted_certs.json

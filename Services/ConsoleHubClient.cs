@@ -1,9 +1,11 @@
 ﻿using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.SignalR.Client;
 using Myria.Lib.Core.Entities.Jobs;
 using Myria.Lib.Core.Models.BaseModel;
+using Myria.Lib.Core.Utils;
 
 namespace Myria.ConsoleApp.Services
 {
@@ -16,7 +18,9 @@ namespace Myria.ConsoleApp.Services
         public static string BaseUrl { get; set; } = "http://localhost:5001";
 
         // Mirrors Myria.Wpf's ServerApiService.NormalizeAddress — lets the player type a bare
-        // "host:port" in settings instead of a full URL.
+        // "host:port" in settings instead of a full URL. Defaults to https:// for anything but
+        // loopback, so a remote server address the player types doesn't silently send their
+        // login credentials over plain HTTP unless they're pointing at their own machine.
         public static string NormalizeAddress(string address)
         {
             address = address.Trim();
@@ -24,12 +28,32 @@ namespace Myria.ConsoleApp.Services
 
             if (!address.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
                 !address.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-                address = "http://" + address;
+            {
+                var host = address.Split('/')[0].Split(':')[0];
+                var isLoopback = host is "localhost" or "127.0.0.1" or "::1";
+                address = (isLoopback ? "http://" : "https://") + address;
+            }
 
             return address;
         }
 
-        private static readonly HttpClient _http = new();
+        // Any operator can run their own Auth/Realm server, almost always with a self-signed
+        // certificate (no domain to get a publicly-trusted one for). Trust-on-first-use each
+        // server address independently via TrustedServerCertStore (same mechanism as Myria.Wpf's
+        // ServerApiService) instead of failing every such connection outright, which is what the
+        // default HttpClient would otherwise do.
+        private static HttpMessageHandler CreatePinnedHandler() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = (request, cert, _, errors) =>
+            {
+                if (errors == System.Net.Security.SslPolicyErrors.None) return true;
+                if (cert is null || request.RequestUri is null) return false;
+                var thumbprint = cert.GetCertHashString(HashAlgorithmName.SHA256);
+                return TrustedServerCertStore.TrustOnFirstUse(request.RequestUri.Authority, thumbprint);
+            }
+        };
+
+        private static readonly HttpClient _http = new(CreatePinnedHandler());
         private static readonly JsonSerializerOptions _jsonOpts = new() { PropertyNameCaseInsensitive = true };
         private static HubConnection? _connection;
         private static string? _token;
@@ -210,6 +234,10 @@ namespace Myria.ConsoleApp.Services
                 .WithUrl($"{BaseUrl}/hubs/game", opts =>
                 {
                     opts.AccessTokenProvider = () => Task.FromResult<string?>(_token);
+                    // Same trust-on-first-use cert handling as _http, so the SignalR connection
+                    // doesn't fall back to default validation (which would reject a self-signed
+                    // server cert outright) once BaseUrl points at https://.
+                    opts.HttpMessageHandlerFactory = _ => CreatePinnedHandler();
                 })
                 .WithAutomaticReconnect()
                 .Build();
