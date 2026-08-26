@@ -415,7 +415,7 @@ namespace Myria.ConsoleApp.Services
         }
 
         // ── Hub invocations ───────────────────────────────────────────────────────
-        // Mirrors the WPF client's UserAccoundService.CurrentCharacter?.Name — the friends/
+        // Mirrors the WPF client's UserAccountService.CurrentCharacter?.Name — the friends/
         // blocks REST endpoints require a characterName so the server can resolve which of the
         // account's characters is acting (an account can own up to 5).
         public static string? CurrentCharacterName { get; private set; }
