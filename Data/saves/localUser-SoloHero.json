@@ -1,0 +1,125 @@
+{
+  "SaveVersion": 1,
+  "SavedWithMods": {
+    "Mods": []
+  },
+  "Character": {
+    "Class": "Cleric",
+    "Race": "Iymva",
+    "Level": 1,
+    "Experience": 0,
+    "ExpForNextLvl": 50,
+    "PotionTierAvailable": 1,
+    "Inventory": {
+      "Pages": 1,
+      "Capacity": 49,
+      "Items": [],
+      "UsedPages": 1
+    },
+    "Money": {
+      "Balance": {
+        "BronzeTotal": 0
+      },
+      "Capacity": 300000,
+      "IsUnlimited": false,
+      "Coins": {
+        "BronzeTotal": 0
+      }
+    },
+    "Skills": [],
+    "ActiveQuests": [],
+    "CompletedQuests": [],
+    "RepeatableQuestRecords": {},
+    "ModState": {},
+    "CurrentRoomId": 1,
+    "LastHealerRoomId": null,
+    "RoomGatheringStatus": {},
+    "CompositeSkills": [],
+    "ActiveCompositeSkillIds": [],
+    "StashedCompositeSkills": {},
+    "CombinedSkills": [],
+    "StashedCombinedSkills": {},
+    "SkillSlots": [],
+    "RaceSelected": true,
+    "ClassXp": {},
+    "LastClassPenaltyApplied": "2026-08-08T00:00:00Z",
+    "LastClassChanged": "0001-01-01T00:00:00",
+    "ActiveJobId": null,
+    "Jobs": [
+      {
+        "JobId": "miner",
+        "SkillXp": 0,
+        "KnowledgeXp": 0,
+        "FameXp": 0,
+        "LastFameTickDay": -1,
+        "LastSkillUsedDay": -1
+      },
+      {
+        "JobId": "woodcutter",
+        "SkillXp": 0,
+        "KnowledgeXp": 0,
+        "FameXp": 0,
+        "LastFameTickDay": -1,
+        "LastSkillUsedDay": -1
+      },
+      {
+        "JobId": "herbalist",
+        "SkillXp": 0,
+        "KnowledgeXp": 0,
+        "FameXp": 0,
+        "LastFameTickDay": -1,
+        "LastSkillUsedDay": -1
+      }
+    ],
+    "LastJobChanged": "0001-01-01T00:00:00",
+    "KnownRunes": [],
+    "RuneDictionary": [],
+    "Name": "SoloHero",
+    "Stats": {
+      "Strength": 13,
+      "Dexterity": 17,
+      "Endurance": 12,
+      "Intelligence": 13,
+      "Spirit": 14,
+      "StrengthBonus": 0,
+      "DexterityBonus": 0,
+      "EnduranceBonus": 0,
+      "IntelligenceBonus": 0,
+      "SpiritBonus": 0,
+      "UnusedPoints": 0,
+      "BaseHealth": 50,
+      "BaseMana": 45,
+      "TotalStrength": 13,
+      "TotalDexterity": 17,
+      "TotalEndurance": 12,
+      "TotalIntelligence": 13,
+      "TotalSpirit": 14,
+      "StrengthAdded": 0,
+      "DexterityAdded": 0,
+      "EnduranceAdded": 0,
+      "IntelligenceAdded": 0,
+      "SpiritAdded": 0
+    },
+    "CurrentHealth": 250,
+    "CurrentMana": 110,
+    "TotalSTR": 15,
+    "TotalDEX": 18,
+    "TotalEND": 16,
+    "TotalINT": 16,
+    "TotalSPR": 19,
+    "MaxHealth": 310,
+    "MaxMana": 150,
+    "IsAlive": true,
+    "WeaponSlot": null,
+    "ArmorSlot": null,
+    "AccessorySlot": null,
+    "TotalPhysicalAttack": 46,
+    "TotalPhysicalDefense": 47,
+    "TotalMagicAttack": 51,
+    "TotalMagicDefense": 54,
+    "TotalAim": 18,
+    "TotalEvasion": 15,
+    "CritChance": 0,
+    "BlockChance": 0
+  }
+}
