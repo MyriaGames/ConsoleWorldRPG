@@ -230,8 +230,12 @@ namespace Myria.ConsoleApp.Services
             if (_token is null) return;
             if (_connection is not null) await DisconnectAsync();
 
+            // Sent so GameHub.OnConnectedAsync can reject an incompatible client outright - see
+            // the versioning scheme in v0.3.md. Same assembly-version source UpdateService (Wpf)
+            // compares against, so this client stays in lockstep with its own build automatically.
+            var clientVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             _connection = new HubConnectionBuilder()
-                .WithUrl($"{BaseUrl}/hubs/game", opts =>
+                .WithUrl($"{BaseUrl}/hubs/game?clientVersion={clientVersion}", opts =>
                 {
                     opts.AccessTokenProvider = () => Task.FromResult<string?>(_token);
                     // Same trust-on-first-use cert handling as _http, so the SignalR connection
@@ -241,6 +245,9 @@ namespace Myria.ConsoleApp.Services
                 })
                 .WithAutomaticReconnect()
                 .Build();
+
+            _connection.On<List<string>>("VersionMismatch", _ =>
+                Printer.PrintWarning(Localization.T("console.version_mismatch")));
 
             _connection.On<string, string, string>("ChatMessage", (sender, msg, channel) =>
                 ChatMessageReceived?.Invoke(sender, msg, channel));
