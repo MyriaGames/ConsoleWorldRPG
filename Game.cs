@@ -279,9 +279,15 @@ namespace Myria.ConsoleApp
         {
             if (ConsoleHubClient.HasToken)
             {
-                if (ConsoleHubClient.IsConnected)
-                    ConsoleHubClient.SaveSessionAsync().GetAwaiter().GetResult();
-                bool ok = ConsoleHubClient.SaveCharacterAsync(Character).GetAwaiter().GetResult();
+                // SaveSession persists the server's own authoritative session character (the same
+                // one every SlotSkill/UnslotSkill/etc. confirm actually mutates) - it used to be
+                // followed by a separate SaveCharacterAsync REST call that saved the client's local
+                // copy instead, immediately overwriting this correct save with a potentially-stale
+                // one (e.g. if a just-sent fire-and-forget slot-assignment confirm hadn't been
+                // reflected in Character's local mirror yet). Since SignalR processes invocations
+                // from one connection in order, awaiting SaveSession here also naturally waits for
+                // any earlier fire-and-forget hub call on this same connection to land first.
+                bool ok = ConsoleHubClient.IsConnected && ConsoleHubClient.SaveSessionAsync().GetAwaiter().GetResult();
                 if (!ok)
                 {
                     Console.WriteLine("Warning: Server save failed. Saving locally...");

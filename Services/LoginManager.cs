@@ -318,6 +318,25 @@ namespace Myria.ConsoleApp.Services
 
             Console.WriteLine(Localization.T("ui_creation_class_set") + Character.Class);
             StartingEquipmentService.GrantStartingEquipment(Character);
+
+            // Every load path (ConsoleHubClient's load, CharacterService.LoadCharacter,
+            // SqlCharacterRepository.LoadAsync used by the multiplayer hub) calls this to auto-fill
+            // SkillSlots from an empty list - this creation path never did, which for multiplayer
+            // meant the server ended up with slot 1 already filled (from its own independent
+            // migration when GameHub.LoadCharacter loads this same character) while the client
+            // showed 0 slots used - so the next skill the player tried to slot was silently
+            // rejected server-side (already at cap) and reverted client-side. See the matching fix
+            // in Wpf's ViewModel_CharacterCreationPage for the full explanation.
+            SkillSlotService.MigrateIfEmpty(Character);
+
+            // Character's constructor snapshot CurrentHealth/CurrentMana from MaxHealth/MaxMana
+            // back when this object was still `new Character(name, new Stats())` - default Fighter
+            // class and default (unraced) stats. Race/Class/Stats have all been set since, so
+            // Max has changed; re-sync Current to match now that everything is final (same fix
+            // Myria.Mono already has in its own CharacterCreationScreen for this exact issue).
+            Character.CurrentHealth = Character.MaxHealth;
+            Character.CurrentMana   = Character.MaxMana;
+
             Character.CurrentRoom = RoomService.AllRooms.FirstOrDefault(r => r.Id == 1);
             return Character;
         }

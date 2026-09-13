@@ -743,10 +743,11 @@ namespace Myria.ConsoleApp.Services
             return null;
         }
 
-        public static async Task SaveSessionAsync()
+        public static async Task<bool> SaveSessionAsync()
         {
             if (IsConnected)
-                try { await _connection!.InvokeAsync<bool>("SaveSession"); } catch { }
+                try { return await _connection!.InvokeAsync<bool>("SaveSession"); } catch { }
+            return false;
         }
 
         public static async Task AbandonCombatAsync()

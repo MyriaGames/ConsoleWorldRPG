@@ -95,9 +95,10 @@
             {
                 if (ConsoleHubClient.HasToken)
                 {
-                    if (ConsoleHubClient.IsConnected)
-                        ConsoleHubClient.SaveSessionAsync().GetAwaiter().GetResult();
-                    bool ok = ConsoleHubClient.SaveCharacterAsync(Character).GetAwaiter().GetResult();
+                    // See Game.SaveCharacter's remarks: SaveSession alone (the server's own
+                    // authoritative session state) - not also a separate client-local REST save
+                    // that could overwrite it with stale data.
+                    bool ok = ConsoleHubClient.IsConnected && ConsoleHubClient.SaveSessionAsync().GetAwaiter().GetResult();
                     if (!ok)
                     {
                         Printer.PrintWarning(Localization.T("console.player.server_save_failed"));
