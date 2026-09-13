@@ -34,6 +34,7 @@ global using JobXpService = Myria.Lib.Core.Services.JobXpService;
 global using DayCycleManager = Myria.Lib.Core.Services.Manager.DayCycleManager;
 global using LootGenerator = Myria.Lib.Core.Systems.LootGenerator;
 global using SkillSlotService = Myria.Lib.Core.Services.SkillSlotService;
+global using SkillLevelingService = Myria.Lib.Core.Services.SkillLevelingService;
 global using GameLog = Myria.Lib.Core.Systems.GameLog;
 global using GameStatus = Myria.Lib.Core.Systems.GameStatus;
 global using ItemConverter = Myria.Lib.Core.Systems.ItemConverter;

@@ -714,6 +714,20 @@ namespace Myria.ConsoleApp.Services
             return false;
         }
 
+        public static async Task<bool> SpendSkillPointAsync(string skillId, string upgradeId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<bool>("SpendSkillPoint", skillId, upgradeId); } catch { }
+            return false;
+        }
+
+        public static async Task<bool> RespecSkillAsync(string skillId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<bool>("RespecSkill", skillId); } catch { }
+            return false;
+        }
+
         // ── Quest / job / class / heal / session ────────────────────────────────
         public static async Task<bool> QuestActionAsync(string questId, bool isReturn)
         {
@@ -971,6 +985,15 @@ namespace Myria.ConsoleApp.Services
                         SkillId   = slot.SkillId
                     }).ToList(),
 
+                    SkillProgress = Character.SkillProgress.Select(sp => new SkillProgressDto
+                    {
+                        SkillId             = sp.SkillId,
+                        UsageCount          = sp.UsageCount,
+                        Level               = sp.Level,
+                        UnspentPoints       = sp.UnspentPoints,
+                        PurchasedUpgradeIds = sp.PurchasedUpgradeIds.ToList()
+                    }).ToList(),
+
                     KnownRunes = Character.KnownRunes.Select(r => new KnownRuneDto
                     {
                         InstanceId   = r.Id,
@@ -1143,6 +1166,18 @@ namespace Myria.ConsoleApp.Services
                         SkillId = slot.SkillId
                     });
 
+                // ── Skill Progress ───────────────────────────────────────────────────
+                Character.SkillProgress.Clear();
+                foreach (var sp in dto.SkillProgress)
+                    Character.SkillProgress.Add(new Myria.Lib.Core.Entities.Skills.SkillProgress
+                    {
+                        SkillId = sp.SkillId,
+                        UsageCount = sp.UsageCount,
+                        Level = sp.Level,
+                        UnspentPoints = sp.UnspentPoints,
+                        PurchasedUpgradeIds = sp.PurchasedUpgradeIds.ToList()
+                    });
+
                 // ── Known Runes ───────────────────────────────────────────────────
                 Character.KnownRunes.Clear();
                 foreach (var r in dto.KnownRunes)
@@ -1181,6 +1216,8 @@ namespace Myria.ConsoleApp.Services
                 BaseRuneService.ResolveRunes(Character);
                 SkillSlotService.ResolveSlots(Character);
                 SkillSlotService.MigrateIfEmpty(Character);
+                foreach (var sp in Character.SkillProgress.ToList())
+                    SkillLevelingService.RecalculateLevelAndPoints(Character, sp.SkillId);
 
                 return Character;
             }
@@ -1334,6 +1371,7 @@ namespace Myria.ConsoleApp.Services
             public List<RepeatableQuestDto> RepeatableQuests    { get; set; } = new();
             public List<JobDto>             Jobs                { get; set; } = new();
             public List<SkillSlotDto>       SkillSlots          { get; set; } = new();
+            public List<SkillProgressDto>   SkillProgress       { get; set; } = new();
             public List<KnownRuneDto>       KnownRunes          { get; set; } = new();
             public List<RuneDictEntryDto>   RuneDictionary      { get; set; } = new();
             public List<RoomGatheringDto>   RoomGatheringStatus { get; set; } = new();
@@ -1383,6 +1421,14 @@ namespace Myria.ConsoleApp.Services
             public string SkillId   { get; set; } = "";
         }
 
+        private class SkillProgressDto
+        {
+            public string       SkillId             { get; set; } = "";
+            public int          UsageCount          { get; set; }
+            public int          Level               { get; set; } = 1;
+            public int          UnspentPoints       { get; set; }
+            public List<string> PurchasedUpgradeIds { get; set; } = new();
+        }
 
         private class KnownRuneDto
         {
