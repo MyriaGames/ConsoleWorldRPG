@@ -5,7 +5,6 @@
         public static bool Handle(string input, Character Character)
         {
             if (input == "skills")  { ShowSkillsMenu(Character); return true; }
-            if (input == "combine") { CombineMenu(Character);    return true; }
             if (input == "slots")   { SlotsMenu(Character);      return true; }
             return false;
         }
@@ -25,20 +24,6 @@
                 for (int i = 0; i < learned.Count; i++)
                     PrintSkillLine($"  {i + 1,2}.", learned[i]);
 
-            // Combined skills
-            var combined = Character.CombinedSkills.Where(c => c.ResolvedSkill != null).ToList();
-            Console.WriteLine(Localization.T("console.skill.combined_header", combined.Count));
-            if (combined.Count == 0)
-                Console.WriteLine(Localization.T("console.skill.combined_empty"));
-            else
-                foreach (var c in combined)
-                {
-                    var sk = c.ResolvedSkill!;
-                    var src = string.Join(" + ", c.SkillIds.Select(id =>
-                        learned.FirstOrDefault(s => s.Id == id)?.Name ?? id));
-                    Console.WriteLine(Localization.T("console.skill.combined_line", c.DisplayName.PadRight(22), SkillSummary(sk).PadRight(30), src));
-                }
-
             // Active slots
             var slots = Character.SkillSlots;
             Console.WriteLine(Localization.T("console.skill.slots_header", slots.Count, Character.SkillSlotCount));
@@ -48,95 +33,11 @@
                 for (int i = 0; i < slots.Count; i++)
                 {
                     var slot = slots[i];
-                    string tag = slot.Source switch
-                    {
-                        SlottedSkillSource.Combined       => Localization.T("console.skill.tag_combined"),
-                        SlottedSkillSource.CompositeFusion => Localization.T("console.skill.tag_fusion"),
-                        _ => ""
-                    };
                     string name = slot.ResolvedSkill?.Name ?? slot.SkillId;
-                    Console.WriteLine(Localization.T("console.skill.slot_line", i + 1, name, tag));
+                    Console.WriteLine(Localization.T("console.skill.slot_line", i + 1, name, ""));
                 }
 
             Console.WriteLine(Localization.T("console.skill.footer_hint"));
-        }
-
-        // ── combine ───────────────────────────────────────────────────────────────
-
-        public static void CombineMenu(Character Character)
-        {
-            var learned = Character.Skills;
-            if (learned.Count < 2)
-            {
-                Console.WriteLine(Localization.T("console.skill.combine_need_more"));
-                return;
-            }
-
-            Console.WriteLine(Localization.T("console.skill.combine_title"));
-            Console.WriteLine(Localization.T("console.skill.combine_hint"));
-            Console.WriteLine(Localization.T("console.skill.combine_cancel_hint"));
-
-            for (int i = 0; i < learned.Count; i++)
-                PrintSkillLine($"  {i + 1,2}.", learned[i]);
-
-            while (true)
-            {
-                Console.Write("\n> ");
-                string raw = Console.ReadLine()?.Trim() ?? "";
-                if (raw.Equals("cancel", StringComparison.OrdinalIgnoreCase)) return;
-
-                var parts = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                var ids   = new List<string>();
-                bool valid = true;
-
-                foreach (var part in parts)
-                {
-                    if (!int.TryParse(part, out int idx) || idx < 1 || idx > learned.Count)
-                    {
-                        Printer.PrintError(Localization.T("console.skill.invalid_number", part));
-                        valid = false;
-                        break;
-                    }
-                    ids.Add(learned[idx - 1].Id);
-                }
-
-                if (!valid) continue;
-
-                if (ids.Count < 2 || ids.Count > 5)
-                {
-                    Printer.PrintError(Localization.T("console.skill.choose_2_to_5"));
-                    continue;
-                }
-
-                // Preview the result before committing
-                var preview = SkillCombinationService.Combine(ids);
-                if (preview == null)
-                {
-                    Printer.PrintError(Localization.T("console.skill.combine_failed"));
-                    continue;
-                }
-
-                string namesStr = string.Join(" + ", ids.Select(id =>
-                    learned.FirstOrDefault(s => s.Id == id)?.Name ?? id));
-                Console.WriteLine(Localization.T("console.skill.combining_line", namesStr));
-                Console.WriteLine(Localization.T("console.skill.result_line", preview.Name, SkillSummary(preview)));
-                Console.Write(Localization.T("console.common.confirm_prompt"));
-                string confirm = Console.ReadLine()?.Trim().ToLower() ?? "";
-                if (confirm != "y") { Console.WriteLine(Localization.T("msg.cancelled")); continue; }
-
-                var result = SkillCombinationService.TryCreateForCharacter(Character, ids);
-                if (result == null)
-                    Printer.PrintError(Localization.T("console.skill.combine_duplicate"));
-                else
-                {
-                    if (ConsoleHubClient.IsConnected)
-                        _ = ConsoleHubClient.CombineSkillsAsync(ids);
-                    CharacterService.SaveCharacter(LoginManager.UserAccount, Character);
-                    Printer.PrintSuccess(Localization.T("console.skill.combine_created", result.DisplayName));
-                    Console.WriteLine(Localization.T("console.skill.slots_hint"));
-                }
-                return;
-            }
         }
 
         // ── slots ─────────────────────────────────────────────────────────────────
@@ -154,14 +55,8 @@
                 else
                     for (int i = 0; i < Character.SkillSlots.Count; i++)
                     {
-                        var s   = Character.SkillSlots[i];
-                        string tag  = s.Source switch
-                        {
-                            SlottedSkillSource.Combined        => Localization.T("console.skill.tag_combined"),
-                            SlottedSkillSource.CompositeFusion => Localization.T("console.skill.tag_fusion"),
-                            _ => ""
-                        };
-                        Console.WriteLine(Localization.T("console.skill.slot_line", i + 1, s.ResolvedSkill?.Name ?? s.SkillId, tag));
+                        var s = Character.SkillSlots[i];
+                        Console.WriteLine(Localization.T("console.skill.slot_line", i + 1, s.ResolvedSkill?.Name ?? s.SkillId, ""));
                     }
 
                 // Available skills not yet slotted — build a lettered list
@@ -176,13 +71,7 @@
                     {
                         char letter  = (char)('a' + i);
                         var  (id, name, src) = available[i];
-                        string tag   = src switch
-                        {
-                            SlottedSkillSource.Combined        => Localization.T("console.skill.tag_combined"),
-                            SlottedSkillSource.CompositeFusion => Localization.T("console.skill.tag_fusion"),
-                            _ => Localization.T("console.skill.tag_regular")
-                        };
-                        Console.WriteLine(Localization.T("console.skill.available_line", letter, name, tag));
+                        Console.WriteLine(Localization.T("console.skill.available_line", letter, name, Localization.T("console.skill.tag_regular")));
                     }
 
                 Console.WriteLine(Localization.T("console.skill.slots_commands_hint"));
@@ -279,16 +168,6 @@
             {
                 if (!Character.SkillSlots.Any(sl => sl.Source == SlottedSkillSource.Regular && sl.SkillId == s.Id))
                     list.Add((s.Id, s.Name, SlottedSkillSource.Regular));
-            }
-            foreach (var c in Character.CombinedSkills.Where(c => c.ResolvedSkill != null))
-            {
-                if (!Character.SkillSlots.Any(sl => sl.Source == SlottedSkillSource.Combined && sl.SkillId == c.Id))
-                    list.Add((c.Id, c.DisplayName, SlottedSkillSource.Combined));
-            }
-            foreach (var f in Character.CompositeSkills.Where(f => f.ResolvedSkill != null))
-            {
-                if (!Character.SkillSlots.Any(sl => sl.Source == SlottedSkillSource.CompositeFusion && sl.SkillId == f.Id))
-                    list.Add((f.Id, f.DisplayName, SlottedSkillSource.CompositeFusion));
             }
             return list;
         }

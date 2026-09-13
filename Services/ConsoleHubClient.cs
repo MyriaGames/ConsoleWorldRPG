@@ -714,13 +714,6 @@ namespace Myria.ConsoleApp.Services
             return false;
         }
 
-        public static async Task<bool> CombineSkillsAsync(List<string> skillIds)
-        {
-            if (IsConnected)
-                try { return await _connection!.InvokeAsync<bool>("CombineSkills", skillIds); } catch { }
-            return false;
-        }
-
         // ── Quest / job / class / heal / session ────────────────────────────────
         public static async Task<bool> QuestActionAsync(string questId, bool isReturn)
         {
@@ -978,10 +971,6 @@ namespace Myria.ConsoleApp.Services
                         SkillId   = slot.SkillId
                     }).ToList(),
 
-                    CompositeSkills = BuildCompositeSkillDtos(Character),
-
-                    CombinedSkills = BuildCombinedSkillDtos(Character),
-
                     KnownRunes = Character.KnownRunes.Select(r => new KnownRuneDto
                     {
                         InstanceId   = r.Id,
@@ -1154,59 +1143,6 @@ namespace Myria.ConsoleApp.Services
                         SkillId = slot.SkillId
                     });
 
-                // ── Composite Skills (active) ─────────────────────────────────────
-                Character.CompositeSkills.Clear();
-                Character.ActiveCompositeSkillIds.Clear();
-                Character.StashedCompositeSkills.Clear();
-
-                foreach (var cs in dto.CompositeSkills)
-                {
-                    var composite = new CompositeSkill
-                    {
-                        Id           = cs.InstanceId,
-                        ComponentIds = cs.ComponentIds.ToList()
-                    };
-
-                    if (cs.IsStashed && !string.IsNullOrEmpty(cs.StashedForClass))
-                    {
-                        var cls = cs.StashedForClass!;
-                        if (!Character.StashedCompositeSkills.ContainsKey(cls))
-                            Character.StashedCompositeSkills[cls] = new();
-                        Character.StashedCompositeSkills[cls].Add(composite);
-                    }
-                    else
-                    {
-                        Character.CompositeSkills.Add(composite);
-                        if (cs.IsActive)
-                            Character.ActiveCompositeSkillIds.Add(cs.InstanceId);
-                    }
-                }
-
-                // ── Combined Skills ───────────────────────────────────────────────
-                Character.CombinedSkills.Clear();
-                Character.StashedCombinedSkills.Clear();
-
-                foreach (var cs in dto.CombinedSkills)
-                {
-                    var combined = new CombinedSkill
-                    {
-                        Id       = cs.InstanceId,
-                        SkillIds = cs.SkillIds.ToList()
-                    };
-
-                    if (cs.IsStashed && !string.IsNullOrEmpty(cs.StashedForClass))
-                    {
-                        var cls = cs.StashedForClass!;
-                        if (!Character.StashedCombinedSkills.ContainsKey(cls))
-                            Character.StashedCombinedSkills[cls] = new();
-                        Character.StashedCombinedSkills[cls].Add(combined);
-                    }
-                    else
-                    {
-                        Character.CombinedSkills.Add(combined);
-                    }
-                }
-
                 // ── Known Runes ───────────────────────────────────────────────────
                 Character.KnownRunes.Clear();
                 foreach (var r in dto.KnownRunes)
@@ -1243,70 +1179,12 @@ namespace Myria.ConsoleApp.Services
                 Character.ValidateQuestStatuses();
                 SkillFactory.UpdateSkills(Character);
                 BaseRuneService.ResolveRunes(Character);
-                SkillFusionSystem.ResolveCompositeSkills(Character);
-                SkillCombinationService.ResolveCombinedSkills(Character);
                 SkillSlotService.ResolveSlots(Character);
                 SkillSlotService.MigrateIfEmpty(Character);
 
                 return Character;
             }
             catch { return null; }
-        }
-
-        // ── Helpers ──────────────────────────────────────────────────────────────
-
-        private static List<CompositeSkillDto> BuildCompositeSkillDtos(Character character)
-        {
-            var list = new List<CompositeSkillDto>();
-
-            foreach (var cs in character.CompositeSkills)
-                list.Add(new CompositeSkillDto
-                {
-                    InstanceId      = cs.Id,
-                    ComponentIds    = cs.ComponentIds.ToList(),
-                    IsStashed       = false,
-                    StashedForClass = null,
-                    IsActive        = character.ActiveCompositeSkillIds.Contains(cs.Id)
-                });
-
-            foreach (var (cls, stashList) in character.StashedCompositeSkills)
-                foreach (var cs in stashList)
-                    list.Add(new CompositeSkillDto
-                    {
-                        InstanceId      = cs.Id,
-                        ComponentIds    = cs.ComponentIds.ToList(),
-                        IsStashed       = true,
-                        StashedForClass = cls,
-                        IsActive        = false
-                    });
-
-            return list;
-        }
-
-        private static List<CombinedSkillDto> BuildCombinedSkillDtos(Character character)
-        {
-            var list = new List<CombinedSkillDto>();
-
-            foreach (var cs in character.CombinedSkills)
-                list.Add(new CombinedSkillDto
-                {
-                    InstanceId      = cs.Id,
-                    SkillIds        = cs.SkillIds.ToList(),
-                    IsStashed       = false,
-                    StashedForClass = null
-                });
-
-            foreach (var (cls, stashList) in character.StashedCombinedSkills)
-                foreach (var cs in stashList)
-                    list.Add(new CombinedSkillDto
-                    {
-                        InstanceId      = cs.Id,
-                        SkillIds        = cs.SkillIds.ToList(),
-                        IsStashed       = true,
-                        StashedForClass = cls
-                    });
-
-            return list;
         }
 
         // ── REST friend operations ────────────────────────────────────────────────
@@ -1456,8 +1334,6 @@ namespace Myria.ConsoleApp.Services
             public List<RepeatableQuestDto> RepeatableQuests    { get; set; } = new();
             public List<JobDto>             Jobs                { get; set; } = new();
             public List<SkillSlotDto>       SkillSlots          { get; set; } = new();
-            public List<CompositeSkillDto>  CompositeSkills     { get; set; } = new();
-            public List<CombinedSkillDto>   CombinedSkills      { get; set; } = new();
             public List<KnownRuneDto>       KnownRunes          { get; set; } = new();
             public List<RuneDictEntryDto>   RuneDictionary      { get; set; } = new();
             public List<RoomGatheringDto>   RoomGatheringStatus { get; set; } = new();
@@ -1507,22 +1383,6 @@ namespace Myria.ConsoleApp.Services
             public string SkillId   { get; set; } = "";
         }
 
-        private class CompositeSkillDto
-        {
-            public string       InstanceId      { get; set; } = "";
-            public List<string> ComponentIds    { get; set; } = new();
-            public bool         IsStashed       { get; set; }
-            public string?      StashedForClass { get; set; }
-            public bool         IsActive        { get; set; }
-        }
-
-        private class CombinedSkillDto
-        {
-            public string       InstanceId      { get; set; } = "";
-            public List<string> SkillIds        { get; set; } = new();
-            public bool         IsStashed       { get; set; }
-            public string?      StashedForClass { get; set; }
-        }
 
         private class KnownRuneDto
         {

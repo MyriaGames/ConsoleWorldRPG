@@ -122,7 +122,6 @@ namespace Myria.ConsoleApp.Utils
             HelpLine("alloc <stat> [n]",                  "console.help.desc.alloc");
             HelpLine("jobs",                              "console.help.desc.jobs");
             HelpLine("skills",                            "console.help.desc.skills");
-            HelpLine("combine",                           "console.help.desc.combine");
             HelpLine("slots",                             "console.help.desc.slots");
             HelpLine("inventory",                         "console.help.desc.inventory");
             HelpLine("go to <npc name>",                  "console.help.desc.go_to");
