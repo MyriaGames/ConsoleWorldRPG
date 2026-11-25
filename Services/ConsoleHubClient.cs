@@ -14,7 +14,10 @@ namespace Myria.ConsoleApp.Services
         // AuthBaseUrl points at the shared MyriaAuthServer (register/login) — fixed regardless
         // of realm. BaseUrl points at the selected realm's own MyriaServer instance (chosen via
         // the realm-selection menu in LoginManager, not this default).
-        public static string AuthBaseUrl { get; set; } = "http://localhost:5050";
+        // Mirrors Myria.Wpf's ServerApiService.DefaultAuthBaseUrl: the official Myria auth server,
+        // used whenever no server address is set. Local dev: set the address to "localhost:5050".
+        public const string DefaultAuthBaseUrl = "https://myria.myria-games.duckdns.org/auth";
+        public static string AuthBaseUrl { get; set; } = DefaultAuthBaseUrl;
         public static string BaseUrl { get; set; } = "http://localhost:5001";
 
         // Mirrors Myria.Wpf's ServerApiService.NormalizeAddress — lets the player type a bare
