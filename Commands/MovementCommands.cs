@@ -64,7 +64,9 @@
                     dungeonRoom.Corpses = new();
             }
 
-            if (nextRoom.IsCity && nextRoom.Npcs.Contains("Healer"))
+            // Same rule as the realm server (GameHub.MoveToRoomAsync), so offline and online agree on
+            // where a defeat respawns you. (It checked Npcs for the literal "Healer", which never matched.)
+            if (nextRoom.NpcRefs.Any(n => n?.Type == NpcType.Healer))
                 Character.LastHealerRoomId = nextRoom.Id;
 
             Character.CurrentRoom = nextRoom;
