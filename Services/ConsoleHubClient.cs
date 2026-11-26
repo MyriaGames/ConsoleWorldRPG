@@ -1238,18 +1238,18 @@ namespace Myria.ConsoleApp.Services
                 Character.Inventory.Items.Clear();
                 foreach (var ii in dto.InventoryItems.OrderBy(x => x.SlotIndex))
                 {
-                    var item = ItemFactory.CreateItem(ii.ItemId, ii.StackSize);
+                    var item = ItemFactory.CreateItem(ii.ItemId, ii.StackSize, ii.UpgradeLevel, ii.CraftQuality);
                     if (item is not null)
                         Character.Inventory.Items.Add(item);
                 }
 
                 // ── Equipment ─────────────────────────────────────────────────────
                 if (!string.IsNullOrEmpty(dto.WeaponItemId))
-                    Character.WeaponSlot = ItemFactory.CreateItem(dto.WeaponItemId) as Myria.Lib.Core.Entities.Items.EquipmentItem;
+                    Character.WeaponSlot = ItemFactory.CreateItem(dto.WeaponItemId, 1, dto.WeaponUpgradeLevel, dto.WeaponCraftQuality) as Myria.Lib.Core.Entities.Items.EquipmentItem;
                 if (!string.IsNullOrEmpty(dto.ArmorItemId))
-                    Character.ArmorSlot = ItemFactory.CreateItem(dto.ArmorItemId) as Myria.Lib.Core.Entities.Items.EquipmentItem;
+                    Character.ArmorSlot = ItemFactory.CreateItem(dto.ArmorItemId, 1, dto.ArmorUpgradeLevel, dto.ArmorCraftQuality) as Myria.Lib.Core.Entities.Items.EquipmentItem;
                 if (!string.IsNullOrEmpty(dto.AccessoryItemId))
-                    Character.AccessorySlot = ItemFactory.CreateItem(dto.AccessoryItemId) as Myria.Lib.Core.Entities.Items.EquipmentItem;
+                    Character.AccessorySlot = ItemFactory.CreateItem(dto.AccessoryItemId, 1, dto.AccessoryUpgradeLevel, dto.AccessoryCraftQuality) as Myria.Lib.Core.Entities.Items.EquipmentItem;
 
                 // ── Active Quests ─────────────────────────────────────────────────
                 // Generated (dynamic) quests aren't in quests.json - register the definitions the
@@ -1510,6 +1510,12 @@ namespace Myria.ConsoleApp.Services
             public string?  WeaponItemId            { get; set; }
             public string?  ArmorItemId             { get; set; }
             public string?  AccessoryItemId         { get; set; }
+            public int      WeaponUpgradeLevel      { get; set; }
+            public float    WeaponCraftQuality      { get; set; } = 1f;
+            public int      ArmorUpgradeLevel       { get; set; }
+            public float    ArmorCraftQuality       { get; set; } = 1f;
+            public int      AccessoryUpgradeLevel   { get; set; }
+            public float    AccessoryCraftQuality   { get; set; } = 1f;
             public long     MoneyBronze             { get; set; }
             public long     MoneyCapacity           { get; set; }
             public int      InventoryPages          { get; set; }
@@ -1548,6 +1554,9 @@ namespace Myria.ConsoleApp.Services
             public string ItemId    { get; set; } = "";
             public int    StackSize { get; set; } = 1;
             public int    SlotIndex { get; set; }
+            // Equipment's upgrade state (read on load; the server ignores these on save).
+            public int    UpgradeLevel { get; set; }
+            public float  CraftQuality { get; set; } = 1f;
         }
 
         private class ActiveQuestDto
