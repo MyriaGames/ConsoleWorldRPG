@@ -27,13 +27,25 @@
             if (spot == null) { Console.WriteLine(Localization.T("console.gather.not_found", spotName)); return true; }
 
             if (!Character.HasToolFor(spot.Type)) { Console.WriteLine(Localization.T("console.gather.no_tool")); return true; }
+            if (!Myria.Lib.Core.Services.GatherService.HasSkill(Character, spot))
+            {
+                Console.WriteLine(Localization.T("log.gather.skill_too_low"));
+                return true;
+            }
 
             if (ConsoleHubClient.IsConnected)
             {
                 var result = ConsoleHubClient.GatherAsync(Character.CurrentRoom.Id).GetAwaiter().GetResult();
                 if (result is null || !result.Success)
                 {
-                    Printer.PrintError(result?.Reason ?? Localization.T("console.gather.fail_fallback"));
+                    Printer.PrintError(result?.Reason switch
+                    {
+                        "skill_too_low" => Localization.T("log.gather.skill_too_low"),
+                        "no_tool"       => Localization.T("console.gather.no_tool"),
+                        "depleted"      => Localization.T("console.gather.exhausted"),
+                        null            => Localization.T("console.gather.fail_fallback"),
+                        var other       => other,
+                    });
                     return true;
                 }
                 if (result.ItemId != null && ItemFactory.TryCreateItem(result.ItemId, out var serverItem))
