@@ -74,7 +74,12 @@ namespace Myria.ConsoleApp.Entities.NPCs
                     var serverResult = ConsoleHubClient.SellItemToNpcAsync(item.Id, amount).GetAwaiter().GetResult();
                     if (serverResult == null || !serverResult.Success)
                     {
-                        Printer.PrintError(serverResult?.Reason ?? Localization.T("console.npc.sell_failed"));
+                        Printer.PrintError(serverResult?.Reason switch
+                        {
+                            "money_full" => Localization.T("npc.action.sell.moneyFull"),
+                            null         => Localization.T("console.npc.sell_failed"),
+                            var other    => other,
+                        });
                         continue;
                     }
 
