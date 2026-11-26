@@ -163,6 +163,7 @@
                 Character.GainXp(result.XpGained);
                 Console.WriteLine($"⭐ +{result.XpGained} XP");
             }
+            PrintSyncedQuestCompletions(Character);
             var drops = new List<(string name, int count)>();
             foreach (var id in result.LootItemIds)
                 if (ItemFactory.TryCreateItem(id, out var item) && Character.Inventory.AddItem(item, Character))
@@ -173,6 +174,16 @@
                 foreach (var (name, count) in drops)
                     Console.WriteLine($"  🪶 {count}x {name}");
             }
+        }
+
+        /// <summary>Online the kill happened on the server: pull its quest counters and report
+        /// quests this fight finished (bounties included).</summary>
+        private static void PrintSyncedQuestCompletions(Character Character)
+        {
+            var before = Character.ActiveQuests.Where(q => q.Status == QuestStatus.Completed).Select(q => q.Id).ToHashSet();
+            ConsoleHubClient.SyncQuestProgress(Character);
+            foreach (var quest in Character.ActiveQuests.Where(q => q.Status == QuestStatus.Completed && !before.Contains(q.Id)))
+                Console.WriteLine($"✅ Quest '{Myria.Lib.Core.Systems.World.QuestText.Name(quest)}' complete! Return to an NPC to claim your reward.");
         }
 
         private static void OnlineDeath(Character Character)
@@ -372,14 +383,14 @@
             {
                 int required = quest.RequiredKills[monster.Id];
                 int current  = quest.KillProgress.GetValueOrDefault(monster.Id, 0);
-                Console.WriteLine($"📜 Quest '{Localization.T(quest.Name)}': {Localization.T(monster.Name)} ({current}/{required})");
+                Console.WriteLine($"📜 Quest '{Myria.Lib.Core.Systems.World.QuestText.Name(quest)}': {Localization.T(monster.Name)} ({current}/{required})");
             }
 
             foreach (var quest in Character.ActiveQuests
                          .Where(q => q.Status == QuestStatus.Completed
                                   && q.RequiredKills.ContainsKey(monster.Id)))
             {
-                Console.WriteLine($"✅ Quest '{Localization.T(quest.Name)}' complete! Return to an NPC to claim your reward.");
+                Console.WriteLine($"✅ Quest '{Myria.Lib.Core.Systems.World.QuestText.Name(quest)}' complete! Return to an NPC to claim your reward.");
             }
         }
 

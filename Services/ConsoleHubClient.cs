@@ -812,6 +812,50 @@ namespace Myria.ConsoleApp.Services
             return false;
         }
 
+        // ── Adventurers' Guild + dynamic quests (v0.3 quest rework) ─────────────
+        public static async Task<bool> JoinAdventurersGuildAsync()
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<bool>("JoinAdventurersGuild"); } catch { }
+            return false;
+        }
+
+        public static async Task<bool> LeaveAdventurersGuildAsync()
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<bool>("LeaveAdventurersGuild"); } catch { }
+            return false;
+        }
+
+        /// <summary>Supply requests (normal NPC) or bounties (guild house, members only) on offer now.</summary>
+        public static async Task<List<DynamicQuestOfferDto>> GetDynamicQuestOffersAsync(string npcId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<List<DynamicQuestOfferDto>>("GetDynamicQuestOffers", npcId); } catch { }
+            return new();
+        }
+
+        /// <summary>Takes an offer; null if it's gone or not takeable here.</summary>
+        public static async Task<DynamicQuestDto?> AcceptDynamicQuestAsync(string token)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<DynamicQuestDto?>("AcceptDynamicQuest", token); } catch { }
+            return null;
+        }
+
+        /// <summary>
+        /// Pulls the server's kill/item counters for every active quest and applies them (statuses
+        /// follow). Online, kills happen in server-side combat, so local counters never move on
+        /// their own; call before deciding what can be handed in.
+        /// </summary>
+        public static void SyncQuestProgress(Character character)
+        {
+            if (!IsConnected) return;
+            List<QuestProgressState> progress = new();
+            try { progress = _connection!.InvokeAsync<List<QuestProgressState>>("GetActiveQuestProgress").GetAwaiter().GetResult(); } catch { }
+            if (progress.Count > 0) character.ApplySyncedQuestProgress(progress);
+        }
+
         // ── Quest / job / class / heal / session ────────────────────────────────
         public static async Task<bool> QuestActionAsync(string questId, bool isReturn)
         {
@@ -1161,7 +1205,8 @@ namespace Myria.ConsoleApp.Services
                     PvpRating               = dto.PvpRating,
                     PvpCurrency             = dto.PvpCurrency,
                     PvpWins                 = dto.PvpWins,
-                    PvpLosses               = dto.PvpLosses
+                    PvpLosses               = dto.PvpLosses,
+                    AdventurersGuildMember  = dto.AdventurersGuildMember
                 };
 
                 Character.CurrentRoom = RoomService.AllRooms.FirstOrDefault(r => r.Id == dto.CurrentRoomId);
@@ -1192,6 +1237,10 @@ namespace Myria.ConsoleApp.Services
                     Character.AccessorySlot = ItemFactory.CreateItem(dto.AccessoryItemId) as Myria.Lib.Core.Entities.Items.EquipmentItem;
 
                 // ── Active Quests ─────────────────────────────────────────────────
+                // Generated (dynamic) quests aren't in quests.json - register the definitions the
+                // server sent first, so GetQuestById below resolves them like any other quest.
+                foreach (var dq in dto.DynamicQuests)
+                    QuestManager.RegisterDynamic(Myria.Lib.Core.Systems.World.DynamicQuests.FromDto(dq));
                 Character.ActiveQuests.Clear();
                 foreach (var aq in dto.ActiveQuests)
                 {
@@ -1456,6 +1505,9 @@ namespace Myria.ConsoleApp.Services
             public long     PvpCurrency             { get; set; }
             public int      PvpWins                 { get; set; }
             public int      PvpLosses               { get; set; }
+            // v0.3 quest rework (read on load; the server ignores these on save)
+            public bool     AdventurersGuildMember  { get; set; }
+            public List<DynamicQuestDto> DynamicQuests { get; set; } = new();
 
             public List<InventoryItemDto>   InventoryItems      { get; set; } = new();
             public List<string>             SkillIds            { get; set; } = new();

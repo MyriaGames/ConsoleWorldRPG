@@ -30,6 +30,10 @@ namespace Myria.ConsoleApp.Entities.NPCs
             // Falls back to all available quests while GiverNpcId data is incomplete.
             QuestDialogHandler.OfferQuestAcceptance(Character, npc);
 
+            // v0.3: what this NPC is short on right now (online; the guild house has its own menu)
+            if (npc.Type != NpcType.AdventurersGuild)
+                DynamicQuestHandler.OfferRequests(Character, npc);
+
             // Service-specific menu
             switch (npc.Type)
             {
@@ -51,6 +55,7 @@ namespace Myria.ConsoleApp.Entities.NPCs
                     else
                         SkillMasterHandler.SkillMasterMenu(Character);
                     break;
+                case NpcType.AdventurersGuild: DynamicQuestHandler.GuildMenu(Character, npc); break;
                 case NpcType.Villager:
                 default:
                     Console.WriteLine(Localization.T("console.npc.nothing_else", npc.Type));

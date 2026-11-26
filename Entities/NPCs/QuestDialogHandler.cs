@@ -1,5 +1,6 @@
 using Myria.Lib.Core.Services;
 using Myria.Lib.Core.Systems.Enums;
+using Myria.Lib.Core.Systems.World;
 
 namespace Myria.ConsoleApp.Entities.NPCs
 {
@@ -15,21 +16,40 @@ namespace Myria.ConsoleApp.Entities.NPCs
             // Currently falls back to all completed quests since GiverNpcId is not
             // set in quests.json yet. Once quest data is updated, switch to
             // QuestManager.GetReturnableForNpc(Character, npc.Id).
+            // Online the server keeps the counters (combat runs there) - fetch them first.
+            if (ConsoleHubClient.IsConnected) ConsoleHubClient.SyncQuestProgress(Character);
+            else QuestManager.UpdateItemProgress(Character);
+
+            // Generated quests are strict about where they go: a supply request back to that NPC in
+            // that city, a bounty to any guild house.
+            var dynamicHere = QuestManager.GetReturnableForNpc(Character, npc.Id).Where(q => q.IsDynamic).ToHashSet();
             var returnable = Character.ActiveQuests
-                .Where(q => q.Status == QuestStatus.Completed)
+                .Where(q => q.Status == QuestStatus.Completed && (!q.IsDynamic || dynamicHere.Contains(q)))
                 .ToList();
 
             if (returnable.Count == 0) return;
 
             Console.WriteLine(Localization.T("console.quest.returns_header"));
             for (int i = 0; i < returnable.Count; i++)
-                Console.WriteLine(Localization.T("console.quest.numbered_line", i + 1, Localization.T(returnable[i].Name)));
+                Console.WriteLine(Localization.T("console.quest.numbered_line", i + 1, QuestText.Name(returnable[i])));
 
             Console.Write(Localization.T("console.quest.return_prompt"));
             if (!int.TryParse(Console.ReadLine(), out int choice) || choice < 1 || choice > returnable.Count)
                 return;
 
             var quest = returnable[choice - 1];
+
+            if (quest.IsDynamic)
+            {
+                if (!PlayDialog(quest, Character, npc, isReturn: true))
+                {
+                    Console.WriteLine(Localization.T("console.quest.return_cancelled"));
+                    return;
+                }
+                if (DynamicQuestHandler.HandIn(Character, quest))
+                    Console.WriteLine(Localization.T("console.quest.returned", QuestText.Name(quest)));
+                return;
+            }
 
             // CN8: play return dialog before completing
             if (!PlayDialog(quest, Character, npc, isReturn: true))
@@ -63,7 +83,7 @@ namespace Myria.ConsoleApp.Entities.NPCs
                 Character.ActiveQuests.Remove(quest);
             }
 
-            Console.WriteLine(Localization.T("console.quest.returned", Localization.T(quest.Name)));
+            Console.WriteLine(Localization.T("console.quest.returned", QuestText.Name(quest)));
         }
 
         // ── Quest acceptance ─────────────────────────────────────────────────────
@@ -119,11 +139,11 @@ namespace Myria.ConsoleApp.Entities.NPCs
             // Authored dialog lines are locale keys (e.g. "quest.co1_first_day.accept.1"); the
             // fallback below is literal display text, not a key, so it must not be translated.
             bool isFallback = lines == null || lines.Count == 0;
-            if (isFallback)
-                lines = new List<DialogLine> { new() { Speaker = "npc", Text = "..." } };
+            if (isFallback) // generated quests have no authored dialog - their description is the line
+                lines = new List<DialogLine> { new() { Speaker = "npc", Text = quest.IsDynamic ? QuestText.Description(quest) : "..." } };
 
             Console.WriteLine();
-            string header = $" {Localization.T(quest.Name)} [Lv {quest.RequiredLevel}] ";
+            string header = $" {QuestText.Name(quest)} [Lv {quest.RequiredLevel}] ";
             int padLen = Math.Max(0, 60 - header.Length);
             Console.WriteLine("─" + header + new string('─', padLen));
 
