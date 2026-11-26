@@ -163,14 +163,13 @@
 
         private static void OnlineDeath(Character Character)
         {
+            // The server already respawned the character (before answering the last turn) and sent
+            // CharacterRespawned, whose handler in Game.cs moved us to the server's respawn room and
+            // says where we woke up. No guessing here: a guessed room that differed from the server's
+            // left every next move refused (moves must use an exit of the server's current room).
             Console.WriteLine("\n💀 You were defeated...");
-            int respawnRoomId   = Character.LastHealerRoomId ?? 1;
-            var respawnRoom     = GameService.Rooms[respawnRoomId];
-            Character.CurrentRoom  = respawnRoom;
-            Character.CurrentRoomId = respawnRoomId;
             Character.CurrentHealth = Character.MaxHealth;
             Character.CurrentMana   = Character.MaxMana;
-            Console.WriteLine($"🌀 You awaken in {respawnRoom.DisplayName()}.");
         }
 
         // ── Monster selection ────────────────────────────────────────────────────

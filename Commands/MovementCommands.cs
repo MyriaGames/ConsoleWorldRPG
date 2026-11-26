@@ -64,11 +64,22 @@
                 return;
             }
 
-            if (nextRoom.IsCity && nextRoom.Npcs.Contains("Healer"))
+            // Online the server decides (and moves first): it only allows walking through an exit of
+            // the room it has the character in. This used to be fire-and-forget, so a refused move
+            // left the client somewhere the server never agreed to.
+            if (ConsoleHubClient.IsConnected && !ConsoleHubClient.JoinRoomAsync(nextRoom.Id).GetAwaiter().GetResult())
+            {
+                Console.WriteLine(Localization.T("console.move.blocked"));
+                return;
+            }
+
+            // Same rule as the realm server, so offline and online agree on where a defeat respawns you.
+            // (It checked Npcs for the literal "Healer", which never matched.)
+            if (nextRoom.NpcRefs.Any(n => n?.Type == NpcType.Healer))
                 Character.LastHealerRoomId = nextRoom.Id;
 
             Character.CurrentRoom = nextRoom;
-            _ = ConsoleHubClient.JoinRoomAsync(Character.CurrentRoom.Id);
+            Character.CurrentRoomId = nextRoom.Id;
             Console.WriteLine(Localization.T("console.move.moved", direction));
             Character.CurrentRoom.Describe();
         }

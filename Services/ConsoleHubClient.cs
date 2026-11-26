@@ -433,11 +433,18 @@ namespace Myria.ConsoleApp.Services
                 try { await _connection!.InvokeAsync("SetCharacterName", characterName); } catch { }
         }
 
-        public static async Task JoinRoomAsync(int roomId)
+        /// <summary>Moves on the server. False when it refuses (no exit from the current room, level or
+        /// quest gates); true offline.</summary>
+        public static async Task<bool> JoinRoomAsync(int roomId)
         {
-            CurrentRoomCharacters.Clear();
-            if (IsConnected)
-                try { await _connection!.InvokeAsync("JoinRoom", roomId); } catch { }
+            if (!IsConnected) return true;
+            try
+            {
+                bool ok = await _connection!.InvokeAsync<bool>("JoinRoom", roomId);
+                if (ok) CurrentRoomCharacters.Clear();
+                return ok;
+            }
+            catch { return false; }
         }
 
         public static async Task SendMessageAsync(string message, string channel = "room", string? target = null)
