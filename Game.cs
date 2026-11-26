@@ -204,6 +204,7 @@ namespace Myria.ConsoleApp
             ConsoleHubClient.GroupCombatStarted  += CombatCommands.OnGroupCombatStarted;
             ConsoleHubClient.GroupCombatUpdated  += CombatCommands.OnGroupCombatUpdated;
             ConsoleHubClient.GroupCombatFinished += CombatCommands.OnGroupCombatFinished;
+            PvpCommands.Attach(_player);
             ConsoleHubClient.CharacterRespawned     += (roomId, roomName) =>
             {
                 var respawnRoom = Myria.Lib.Core.Services.RoomService.AllRooms.FirstOrDefault(r => r.Id == roomId);

@@ -27,6 +27,8 @@ namespace Myria.ConsoleApp.Systems
                 : input[..firstSpace].ToLowerInvariant() + input[firstSpace..];
 
             return
+                // First: while in a PvP fight its attack/cast/use/flee must win over the normal commands.
+                PvpCommands.Handle(input, _player) ||
                 InventoryCommands.Handle(input, _player) ||
                 NpcCommands.Handle(input, _player) ||
                 CharacterCommands.Handle(input, _player) ||

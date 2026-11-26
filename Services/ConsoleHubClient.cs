@@ -112,6 +112,11 @@ namespace Myria.ConsoleApp.Services
         public static event Action<GroupCombatSnapshot>?    GroupCombatFinished;
         public static event Action<int, string>?            CharacterRespawned;    // roomId, roomName
 
+        // ── PvP (v0.3) ───────────────────────────────────────────────────────────
+        public static event Action<PvpSnapshot>? PvpStarted;
+        public static event Action<PvpSnapshot>? PvpUpdated;
+        public static event Action<PvpSnapshot>? PvpFinished;
+
         // ── Trade state ──────────────────────────────────────────────────────────
         // tradeId -> proposerName, for pending incoming proposals
         public static Dictionary<string, string> PendingTradeProposals { get; } = new();
@@ -348,6 +353,10 @@ namespace Myria.ConsoleApp.Services
                 ActiveGroupCombat = null;
                 GroupCombatFinished?.Invoke(snap);
             });
+
+            _connection.On<PvpSnapshot>("PvpStarted",  snap => PvpStarted?.Invoke(snap));
+            _connection.On<PvpSnapshot>("PvpUpdated",  snap => PvpUpdated?.Invoke(snap));
+            _connection.On<PvpSnapshot>("PvpFinished", snap => PvpFinished?.Invoke(snap));
 
             _connection.On<int, string>("CharacterRespawned", (roomId, roomName) =>
                 CharacterRespawned?.Invoke(roomId, roomName));
@@ -652,6 +661,55 @@ namespace Myria.ConsoleApp.Services
             if (IsConnected)
                 try { return await _connection!.InvokeAsync<GroupCombatSnapshot>("GroupCharacterUseItem", itemId); } catch { }
             return null;
+        }
+
+        // ── PvP (v0.3) ───────────────────────────────────────────────────────────
+
+        public static async Task<List<PvpTargetInfo>> GetPvpTargetsAsync()
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<List<PvpTargetInfo>>("GetPvpTargets"); } catch { }
+            return new();
+        }
+
+        public static async Task<StartPvpResult?> StartPvpFightAsync(string targetName, bool partyFight)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<StartPvpResult>("StartPvpFight", targetName, partyFight); } catch { }
+            return null;
+        }
+
+        public static async Task<PvpSnapshot?> PvpAttackAsync(int opponentIndex)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<PvpSnapshot?>("PvpAttack", opponentIndex); } catch { }
+            return null;
+        }
+
+        public static async Task<PvpSnapshot?> PvpCastSkillAsync(string skillId, int targetIndex)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<PvpSnapshot?>("PvpCastSkill", skillId, targetIndex); } catch { }
+            return null;
+        }
+
+        public static async Task<PvpSnapshot?> PvpUseItemAsync(string itemId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<PvpSnapshot?>("PvpUseItem", itemId); } catch { }
+            return null;
+        }
+
+        public static async Task PvpFleeAsync()
+        {
+            if (IsConnected)
+                try { await _connection!.InvokeAsync("PvpFlee"); } catch { }
+        }
+
+        public static async Task PvpSkipStalledTurnAsync()
+        {
+            if (IsConnected)
+                try { await _connection!.InvokeAsync<bool>("PvpSkipStalledTurn"); } catch { }
         }
 
         public static async Task<GatherActionResult?> GatherAsync(int roomId)
@@ -1099,7 +1157,11 @@ namespace Myria.ConsoleApp.Services
                     LastClassPenaltyApplied = dto.LastClassPenaltyApplied,
                     LastClassChanged        = dto.LastClassChanged,
                     ActiveJobId             = dto.ActiveJobId,
-                    LastJobChanged          = dto.LastJobChanged
+                    LastJobChanged          = dto.LastJobChanged,
+                    PvpRating               = dto.PvpRating,
+                    PvpCurrency             = dto.PvpCurrency,
+                    PvpWins                 = dto.PvpWins,
+                    PvpLosses               = dto.PvpLosses
                 };
 
                 Character.CurrentRoom = RoomService.AllRooms.FirstOrDefault(r => r.Id == dto.CurrentRoomId);
@@ -1389,6 +1451,11 @@ namespace Myria.ConsoleApp.Services
             public DateTime LastClassChanged        { get; set; }
             public string?  ActiveJobId             { get; set; }
             public DateTime LastJobChanged          { get; set; }
+            // PvP standing: read on load; the server ignores these on save (server-authoritative).
+            public int      PvpRating               { get; set; } = Myria.Lib.Core.Services.PvpRatingService.StartingRating;
+            public long     PvpCurrency             { get; set; }
+            public int      PvpWins                 { get; set; }
+            public int      PvpLosses               { get; set; }
 
             public List<InventoryItemDto>   InventoryItems      { get; set; } = new();
             public List<string>             SkillIds            { get; set; } = new();

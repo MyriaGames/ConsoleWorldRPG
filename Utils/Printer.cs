@@ -116,12 +116,16 @@ namespace Myria.ConsoleApp.Utils
             HelpLine("attack [n]",                      "console.help.desc.attack");
             HelpLine("cast <skill> [n]",                "console.help.desc.cast");
             HelpLine("group status",                    "console.help.desc.group_status");
+            HelpLine("arena",                           "console.help.desc.arena");
+            HelpLine("challenge [party] <n>",           "console.help.desc.challenge");
+            HelpLine("flee",                            "console.help.desc.flee");
             HelpLine("status",                           "console.help.desc.status");
             HelpLine("character",                        "console.help.desc.character");
             HelpLine("stats",                             "console.help.desc.stats");
             HelpLine("alloc <stat> [n]",                  "console.help.desc.alloc");
             HelpLine("jobs",                              "console.help.desc.jobs");
             HelpLine("skills",                            "console.help.desc.skills");
+            HelpLine("skill <n>",                         "console.help.desc.skill");
             HelpLine("slots",                             "console.help.desc.slots");
             HelpLine("inventory",                         "console.help.desc.inventory");
             HelpLine("go to <npc name>",                  "console.help.desc.go_to");
