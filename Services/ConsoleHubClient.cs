@@ -1368,6 +1368,7 @@ namespace Myria.ConsoleApp.Services
                 BaseRuneService.ResolveRunes(Character);
                 SkillSlotService.ResolveSlots(Character);
                 SkillSlotService.MigrateIfEmpty(Character);
+                Myria.Lib.Core.Services.Manager.RaceMigration.Apply(Character); // v0.3: retired races -> lore races
                 foreach (var sp in Character.SkillProgress.ToList())
                     SkillLevelingService.RecalculateLevelAndPoints(Character, sp.SkillId);
 

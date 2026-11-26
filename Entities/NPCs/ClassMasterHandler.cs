@@ -50,7 +50,8 @@ namespace Myria.ConsoleApp.Entities.NPCs
 
                 if (raceProfile.ForbiddenClasses.Contains(chosen))
                 {
-                    Printer.PrintError(Localization.T("console.npc.class_forbidden_for_race", chosen, Character.Race));
+                    Printer.PrintError(ClassManager.GetRestrictionReason(Character.Race, chosen)
+                        ?? Localization.T("console.npc.class_forbidden_for_race", chosen, Character.Race));
                     continue;
                 }
 

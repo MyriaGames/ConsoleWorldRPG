@@ -263,7 +263,7 @@ namespace Myria.ConsoleApp.Services
                 var rp   = allRaces[race];
                 var b    = rp.BaseStatBonus;
                 var g    = rp.StatGrowth;
-                Console.WriteLine(Localization.T("console.login.numbered_line", i + 1, race));
+                Console.WriteLine(Localization.T("console.login.numbered_line", i + 1, Localization.T($"race.{race}")));
                 Console.WriteLine($"   {Localization.T($"race.{race}.desc")}");
                 Console.WriteLine($"   {Localization.T("ui_creation_race_stats")}: STR {10 + b["STR"],2}  DEX {10 + b["DEX"],2}  END {10 + b["END"],2}  INT {10 + b["INT"],2}  SPR {10 + b["SPR"],2}  HP +{rp.BaseHpBonus}  MP +{rp.BaseManaBonus}");
                 Console.WriteLine($"   {Localization.T("ui_creation_race_growth")}: STR +{g["STR"]}  DEX +{g["DEX"]}  END +{g["END"]}  INT +{g["INT"]}  SPR +{g["SPR"]}  HP +{rp.HpPerLevel}  MP +{rp.ManaPerLevel}");
@@ -293,18 +293,30 @@ namespace Myria.ConsoleApp.Services
             Character.Stats.Spirit       = 10 + raceProfile.BaseStatBonus["SPR"];
             Character.Stats.BaseHealth  += raceProfile.BaseHpBonus;
             Character.Stats.BaseMana    += raceProfile.BaseManaBonus;
-            Console.WriteLine(Localization.T("ui_creation_race_set") + selectedRace);
+            Console.WriteLine(Localization.T("ui_creation_race_set") + Localization.T($"race.{selectedRace}"));
             Console.WriteLine();
 
             // ── Class selection ───────────────────────────────────────────────
+            // RunicMage stays out of this build (rune magic isn't in v0.3's scope) - every race could
+            // take it by the rules, so it isn't a race restriction.
             var allowedClasses = ClassProfile.All.Keys
-                .Where(c => !raceProfile.ForbiddenClasses.Contains(c))
+                .Where(c => ClassManager.IsClassAllowed(selectedRace, c) && c != CharacterClass.RunicMage)
                 .ToList();
 
             Console.WriteLine(Localization.T("ui_creation_choose_class"));
             Console.WriteLine(Localization.T("ui_creation_classes"));
-            foreach (var klasse in allowedClasses)
-                Console.WriteLine(klasse);
+            foreach (var klasse in ClassProfile.All.Keys.Where(c => c != CharacterClass.RunicMage))
+            {
+                string? reason = ClassManager.GetRestrictionReason(selectedRace, klasse);
+                if (reason is null)
+                    Console.WriteLine($"{klasse,-14} {Localization.T($"class.{klasse}.desc")}");
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"{klasse,-14} {reason}");
+                    Console.ResetColor();
+                }
+            }
 
             Console.Write("> ");
             string classInput = Console.ReadLine()?.Trim().ToLower() ?? "";
