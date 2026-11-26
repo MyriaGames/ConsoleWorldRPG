@@ -42,7 +42,7 @@
                 for (int i = 0; i < options.Count; i++)
                     Console.WriteLine(Localization.T("console.skill.upgrade_line", i + 1, options[i].Description, UpgradeStatus(progress, options[i])));
 
-                string respecCost = new Money(SkillLevelingService.RespecCostGold).ToString();
+                string respecCost = new Money(SkillLevelingService.RespecCostBronze).ToString();
                 Console.WriteLine(Localization.T("console.skill.detail_commands_hint", respecCost));
                 Console.Write("> ");
                 string line = Console.ReadLine()?.Trim().ToLower() ?? "";
@@ -124,9 +124,9 @@
                     Printer.PrintError(Localization.T("console.skill.respec_failed"));
                     return;
                 }
-                Character.Money.TrySpend(SkillLevelingService.RespecCostGold);
+                Character.Money.TrySpend(SkillLevelingService.RespecCostBronze);
             }
-            else if (!Character.Money.TrySpend(SkillLevelingService.RespecCostGold))
+            else if (!Character.Money.TrySpend(SkillLevelingService.RespecCostBronze))
             {
                 Printer.PrintError(Localization.T("console.skill.respec_failed"));
                 return;
