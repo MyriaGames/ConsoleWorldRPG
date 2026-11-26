@@ -66,6 +66,20 @@
                     return true;
                 }
 
+                if (input.StartsWith("use "))
+                {
+                    // use <item> - resolved against the local inventory (id prefix, like the
+                    // offline "use"), then sent by exact id; the server re-resolves it itself.
+                    var item = Myria.Lib.Core.Utils.InventoryUtils.ResolveInventoryItem(input[4..].Trim(), Character);
+                    if (item is not ConsumableItem)
+                    {
+                        Console.WriteLine(Localization.T("console.combat.invalid_item"));
+                        return true;
+                    }
+                    _ = DoGroupUseItemAsync(Character, item);
+                    return true;
+                }
+
                 if (input is "group status" or "group")
                 {
                     if (_groupSnap != null) PrintGroupState(_groupSnap);
@@ -126,6 +140,34 @@
                 Console.WriteLine(Localization.T("console.combat.invalid_cast"));
         }
 
+        private static async Task DoGroupUseItemAsync(Character character, Item item)
+        {
+            var snap = await ConsoleHubClient.GroupCharacterUseItemAsync(item.Id);
+            if (snap == null || snap.Characters.Count == 0)
+            {
+                Console.WriteLine(Localization.T("console.combat.invalid_item"));
+                return;
+            }
+            MirrorItemUse(character, item, snap.LogEntries);
+        }
+
+        /// <summary>
+        /// The console doesn't consume the server's CharacterUpdated inventory push, so - like the
+        /// out-of-combat "use" - it mirrors a server-confirmed use onto the local inventory itself.
+        /// Only when the turn's log shows this character actually used it (a stunned turn doesn't).
+        /// </summary>
+        internal static void MirrorItemUse(Character character, Item item, IEnumerable<CombatLogMessage> log)
+        {
+            if (log.Any(e => e.Key == "pg.fight.log.usedItem" && e.Args.FirstOrDefault() == character.Name))
+                character.Inventory.ConsumeOne(item);
+        }
+
+        /// <summary>Combat log args can carry item name keys (e.g. "pg.fight.log.usedItem"'s
+        /// item) - translate those; everything else passes through unchanged.</summary>
+        internal static object[] LocalizeLogArgs(IEnumerable<object> args) =>
+            args.Select(a => a is string s && s.StartsWith("item.", StringComparison.OrdinalIgnoreCase)
+                ? Localization.T(s) : a).ToArray();
+
         // ── Display helpers ───────────────────────────────────────────────────
 
         private static void PrintGroupState(GroupCombatSnapshot snap)
@@ -148,7 +190,7 @@
         {
             try
             {
-                var text = Localization.T(msg.Key, msg.Args.Cast<object>().ToArray());
+                var text = Localization.T(msg.Key, LocalizeLogArgs(msg.Args));
                 Console.WriteLine(text);
             }
             catch

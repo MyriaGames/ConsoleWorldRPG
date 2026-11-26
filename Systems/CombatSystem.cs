@@ -83,7 +83,7 @@
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"{monsterName} — HP: {monsterHp}/{monsterMaxHp}");
                 Console.ResetColor();
-                Console.WriteLine("What will you do? (attack / cast <skill> / list)");
+                Console.WriteLine("What will you do? (attack / cast <skill> / use <item> / list)");
                 Console.Write("> ");
 
                 var input = Console.ReadLine()?.Trim().ToLower() ?? "";
@@ -106,6 +106,20 @@
                     PrintSkillList(Character);
                     continue;
                 }
+                else if (input.StartsWith("use "))
+                {
+                    var item = InventoryUtils.ResolveInventoryItem(input[4..].Trim(), Character);
+                    if (item is not ConsumableItem)
+                    {
+                        Console.WriteLine(item != null
+                            ? "You can't use that item in battle!"
+                            : "You don't have that item in your inventory!");
+                        continue;
+                    }
+                    result = ConsoleHubClient.CharacterUseItemAsync(item.Id).GetAwaiter().GetResult();
+                    if (result is { Success: true })
+                        Commands.CombatCommands.MirrorItemUse(Character, item, result.LogEntries);
+                }
                 else if (input == "list")
                 {
                     Character.Inventory.ListItems();
@@ -113,7 +127,7 @@
                 }
                 else
                 {
-                    Console.WriteLine("❓ Use 'attack', 'cast <skill>', or 'list'.");
+                    Console.WriteLine("❓ Use 'attack', 'cast <skill>', 'use <item>', or 'list'.");
                     continue;
                 }
 
@@ -138,7 +152,7 @@
         private static void FlushOnlineLog(List<CombatLogMessage> entries)
         {
             foreach (var entry in entries)
-                Console.WriteLine("  " + Localization.T(entry.Key, entry.Args.Cast<object>().ToArray()));
+                Console.WriteLine("  " + Localization.T(entry.Key, Commands.CombatCommands.LocalizeLogArgs(entry.Args)));
         }
 
         private static void OnlineWin(Character Character, string monsterName, CombatTurnResult result)
@@ -338,7 +352,7 @@
             while (logIndex < encounter.Log.Count)
             {
                 var entry = encounter.Log[logIndex++];
-                Console.WriteLine("  " + Localization.T(entry.Key, entry.Args));
+                Console.WriteLine("  " + Localization.T(entry.Key, Commands.CombatCommands.LocalizeLogArgs(entry.Args)));
             }
         }
 

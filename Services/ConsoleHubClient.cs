@@ -617,6 +617,13 @@ namespace Myria.ConsoleApp.Services
             return null;
         }
 
+        public static async Task<CombatTurnResult?> CharacterUseItemAsync(string itemId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<CombatTurnResult>("CharacterUseItem", itemId); } catch { }
+            return null;
+        }
+
         // soloOnly mirrors the WPF client's StartFight() (true — plain "fight", no party pull-in)
         // vs StartGroupFightLocal() (false — explicit "group fight", pulls in the whole party).
         public static async Task<StartGroupCombatResult?> StartGroupCombatAsync(int roomId, bool soloOnly = false)
@@ -637,6 +644,13 @@ namespace Myria.ConsoleApp.Services
         {
             if (IsConnected)
                 try { return await _connection!.InvokeAsync<GroupCombatSnapshot>("GroupCharacterCastSkill", skillId, targetIndex); } catch { }
+            return null;
+        }
+
+        public static async Task<GroupCombatSnapshot?> GroupCharacterUseItemAsync(string itemId)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<GroupCombatSnapshot>("GroupCharacterUseItem", itemId); } catch { }
             return null;
         }
 

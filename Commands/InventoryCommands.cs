@@ -116,7 +116,7 @@
                 }
 
                 consumable.Use(Character);
-                Character.Inventory.RemoveItem(item);
+                Character.Inventory.ConsumeOne(item);
             }
             else
             {
