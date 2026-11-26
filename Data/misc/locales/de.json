@@ -51,7 +51,7 @@
   "ui_realm_offline": "❌ Dieser Server ist offline. Wähle einen anderen.",
   "ui_server_address": "Serveradresse",
   "ui_server_address_default": "Standard",
-  "ui_server_address_prompt": "Gib die Adresse des Auth-Servers ein (z.B. myria.duckdns.org:5050), aktuell: {0}. Leer lassen zum Abbrechen: ",
+  "ui_server_address_prompt": "Gib die Adresse des Auth-Servers ein (z.B. myria.myria-games.duckdns.org/auth), aktuell: {0}. Leer lassen zum Abbrechen: ",
   "item.tempered_blade": "Gehärtete Klinge",
   "item.vanguard_mail": "Vorhut-Kettenzeug",
   "item.swiftsteel_edge": "Flinkstahl-Klinge",

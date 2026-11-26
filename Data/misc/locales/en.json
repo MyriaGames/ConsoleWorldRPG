@@ -62,7 +62,7 @@
   "ui_realm_offline": "❌ That realm is offline. Pick another.",
   "ui_server_address": "Server address",
   "ui_server_address_default": "default",
-  "ui_server_address_prompt": "Enter auth server address (e.g. myria.duckdns.org:5050), current: {0}. Leave blank to cancel: ",
+  "ui_server_address_prompt": "Enter auth server address (e.g. myria.myria-games.duckdns.org/auth), current: {0}. Leave blank to cancel: ",
   "item.tempered_blade": "Tempered Blade",
   "item.vanguard_mail": "Vanguard Mail",
   "item.swiftsteel_edge": "Swiftsteel Edge",

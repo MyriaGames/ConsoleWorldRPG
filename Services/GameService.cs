@@ -16,7 +16,7 @@
                 SettingsService.Load();
                 Localization.Load(Settings.Current.LanguageSettings.Local);
 
-                // Matches Wpf's App.xaml.cs: empty means "use the built-in localhost default".
+                // Matches Wpf's App.xaml.cs: empty means "use the built-in default" (the official server).
                 if (!string.IsNullOrWhiteSpace(Settings.Current.ServerAddress))
                     ConsoleHubClient.AuthBaseUrl = ConsoleHubClient.NormalizeAddress(Settings.Current.ServerAddress);
 
