@@ -6,7 +6,159 @@
         {
             if (input == "skills")  { ShowSkillsMenu(Character); return true; }
             if (input == "slots")   { SlotsMenu(Character);      return true; }
+            if (input == "skill" || input.StartsWith("skill "))
+            {
+                var skill = ResolveLearnedSkill(Character, input.Length > 6 ? input[6..].Trim() : "");
+                if (skill == null) Printer.PrintError(Localization.T("console.skill.no_such_skill"));
+                else               SkillDetailMenu(Character, skill);
+                return true;
+            }
             return false;
+        }
+
+        // ── skill <n|name>: level progress, upgrade purchases, respec ────────────
+
+        /// <summary>
+        /// Console counterpart of WPF's Skill Detail screen. Online, the server is authoritative
+        /// (GameHub.SpendSkillPoint/RespecSkill) and the same change is then mirrored locally -
+        /// the console doesn't apply the server's CharacterUpdated pushes (same as slot changes).
+        /// </summary>
+        public static void SkillDetailMenu(Character Character, Skill baseSkill)
+        {
+            while (true)
+            {
+                SkillLevelingService.RecalculateLevelAndPoints(Character, baseSkill.Id);
+                var progress  = SkillLevelingService.GetOrCreate(Character, baseSkill.Id);
+                var effective = SkillLevelingService.ResolveEffectiveSkill(Character, baseSkill);
+                var options   = baseSkill.UpgradeOptions;
+
+                Console.WriteLine(Localization.T("console.skill.detail_header", baseSkill.Name, progress.Level));
+                Console.WriteLine(Localization.T("console.skill.detail_stats",
+                    progress.UsageCount, progress.UnspentPoints, effective.ManaCost, effective.ScalingFactor));
+
+                Console.WriteLine(Localization.T("console.skill.upgrades_header"));
+                if (options.Count == 0)
+                    Console.WriteLine(Localization.T("console.common.none_paren"));
+                for (int i = 0; i < options.Count; i++)
+                    Console.WriteLine(Localization.T("console.skill.upgrade_line", i + 1, options[i].Description, UpgradeStatus(progress, options[i])));
+
+                string respecCost = new Money(SkillLevelingService.RespecCostGold).ToString();
+                Console.WriteLine(Localization.T("console.skill.detail_commands_hint", respecCost));
+                Console.Write("> ");
+                string line = Console.ReadLine()?.Trim().ToLower() ?? "";
+
+                if (line == "done" || line == "") return;
+
+                if (line.StartsWith("buy "))
+                {
+                    if (!int.TryParse(line[4..].Trim(), out int num) || num < 1 || num > options.Count)
+                    {
+                        Printer.PrintError(Localization.T("console.skill.buy_usage"));
+                        continue;
+                    }
+                    BuyUpgrade(Character, baseSkill, options[num - 1]);
+                }
+                else if (line == "respec")
+                {
+                    RespecSkill(Character, baseSkill, progress, respecCost);
+                }
+                else
+                {
+                    Printer.PrintError(Localization.T("console.skill.unknown_detail_command"));
+                }
+            }
+        }
+
+        private static void BuyUpgrade(Character Character, Skill baseSkill, SkillUpgradeOption option)
+        {
+            // Validate locally first for a specific message (the hub only answers true/false), then
+            // let the server decide when online.
+            var progress = SkillLevelingService.GetOrCreate(Character, baseSkill.Id);
+            int max = SkillLevelingService.GetEffectiveMaxPurchases(option);
+            if (progress.Level < option.RequiredLevel)
+            {
+                Printer.PrintError(Localization.T("console.skill.buy_level_too_low", option.RequiredLevel));
+                return;
+            }
+            if (max > 0 && progress.PurchasedUpgradeIds.Count(id => id == option.Id) >= max)
+            {
+                Printer.PrintError(Localization.T("console.skill.buy_maxed"));
+                return;
+            }
+            if (progress.UnspentPoints <= 0)
+            {
+                Printer.PrintError(Localization.T("console.skill.buy_no_points"));
+                return;
+            }
+
+            bool serverOk = !ConsoleHubClient.IsConnected
+                || ConsoleHubClient.SpendSkillPointAsync(baseSkill.Id, option.Id).GetAwaiter().GetResult();
+
+            if (serverOk && SkillLevelingService.TrySpendPoint(Character, baseSkill, option.Id, out _))
+            {
+                CharacterService.SaveCharacter(LoginManager.UserAccount, Character);
+                Printer.PrintSuccess(Localization.T("console.skill.bought", option.Description));
+            }
+            else
+                Printer.PrintError(Localization.T("console.skill.buy_failed"));
+        }
+
+        private static void RespecSkill(Character Character, Skill baseSkill, SkillProgress progress, string respecCost)
+        {
+            // GameHub.RespecSkill charges even when there's nothing to refund - don't let that happen.
+            if (progress.PurchasedUpgradeIds.Count == 0)
+            {
+                Printer.PrintError(Localization.T("console.skill.respec_nothing"));
+                return;
+            }
+
+            Console.Write(Localization.T("console.skill.respec_confirm", baseSkill.Name, respecCost) + " ");
+            if ((Console.ReadLine()?.Trim().ToLower() ?? "") is not ("y" or "yes" or "j" or "ja")) return;
+
+            if (ConsoleHubClient.IsConnected)
+            {
+                // Server decides (and charges); mirror the charge locally best-effort - a stale local
+                // balance mustn't turn an already-done server respec into a reported failure.
+                if (!ConsoleHubClient.RespecSkillAsync(baseSkill.Id).GetAwaiter().GetResult())
+                {
+                    Printer.PrintError(Localization.T("console.skill.respec_failed"));
+                    return;
+                }
+                Character.Money.TrySpend(SkillLevelingService.RespecCostGold);
+            }
+            else if (!Character.Money.TrySpend(SkillLevelingService.RespecCostGold))
+            {
+                Printer.PrintError(Localization.T("console.skill.respec_failed"));
+                return;
+            }
+
+            SkillLevelingService.Respec(Character, baseSkill.Id);
+            CharacterService.SaveCharacter(LoginManager.UserAccount, Character);
+            Printer.PrintSuccess(Localization.T("console.skill.respec_done",
+                SkillLevelingService.GetOrCreate(Character, baseSkill.Id).UnspentPoints));
+        }
+
+        /// <summary>The bracketed status shown next to an upgrade: locked until its level, else
+        /// "x/y" for capped upgrades or "bought x, repeatable" for uncapped ones.</summary>
+        public static string UpgradeStatus(SkillProgress progress, SkillUpgradeOption option)
+        {
+            int bought = progress.PurchasedUpgradeIds.Count(id => id == option.Id);
+            int max    = SkillLevelingService.GetEffectiveMaxPurchases(option);
+            if (progress.Level < option.RequiredLevel)
+                return Localization.T("console.skill.upgrade_locked", option.RequiredLevel);
+            return max > 0
+                ? Localization.T("console.skill.upgrade_count", bought, max)
+                : Localization.T("console.skill.upgrade_repeatable", bought);
+        }
+
+        /// <summary>By 1-based number from the "skills" list, or by name/id (case-insensitive).</summary>
+        private static Skill? ResolveLearnedSkill(Character Character, string arg)
+        {
+            if (arg.Length == 0) return null;
+            if (int.TryParse(arg, out int num))
+                return num >= 1 && num <= Character.Skills.Count ? Character.Skills[num - 1] : null;
+            return Character.Skills.FirstOrDefault(s =>
+                s.Name.Equals(arg, StringComparison.OrdinalIgnoreCase) || s.Id.Equals(arg, StringComparison.OrdinalIgnoreCase));
         }
 
         // ── skills ───────────────────────────────────────────────────────────────
@@ -22,7 +174,7 @@
                 Console.WriteLine(Localization.T("console.skill.learned_empty"));
             else
                 for (int i = 0; i < learned.Count; i++)
-                    PrintSkillLine($"  {i + 1,2}.", learned[i]);
+                    PrintSkillLine($"  {i + 1,2}.", learned[i], Character);
 
             // Active slots
             var slots = Character.SkillSlots;
@@ -144,9 +296,14 @@
 
         // ── Helpers ───────────────────────────────────────────────────────────────
 
-        private static void PrintSkillLine(string prefix, Skill skill)
+        private static void PrintSkillLine(string prefix, Skill skill, Character Character)
         {
-            Console.WriteLine(Localization.T("console.skill.skill_line", prefix, skill.Name.PadRight(22), SkillSummary(skill)));
+            SkillLevelingService.RecalculateLevelAndPoints(Character, skill.Id);
+            var progress = SkillLevelingService.GetOrCreate(Character, skill.Id);
+            string points = progress.UnspentPoints > 0
+                ? Localization.T("console.skill.points_suffix", progress.UnspentPoints) : "";
+            Console.WriteLine(Localization.T("console.skill.skill_line", prefix, skill.Name.PadRight(22), SkillSummary(skill))
+                + Localization.T("console.skill.level_suffix", progress.Level) + points);
         }
 
         private static string SkillSummary(Skill skill)
