@@ -39,36 +39,37 @@
                 return;
             }
 
-            if (nextRoom.IsDungeonRoom && nextRoom.Monsters.Count == 0)
-                nextRoom.IsCleared = true;
-
-            if (Character.CurrentRoom.IsDungeonRoom && !Character.CurrentRoom.IsCleared)
-            {
-                Console.WriteLine(Localization.T("console.move.dungeon_locked"));
-                return;
-            }
-            else if (Character.CurrentRoom.IsDungeonRoom && !nextRoom.IsDungeonRoom)
-            {
-                Console.WriteLine(Localization.T("console.move.dungeon_reset"));
-                int dungId = Character.CurrentRoom.DungonId;
-                foreach (var dungeonRoom in GameService.Rooms.Values.Where(r => r.DungonId == dungId))
-                {
-                    dungeonRoom.IsCleared = false;
-                    dungeonRoom.Corpses = new();
-                }
-            }
-
             if (nextRoom.RequirementType == RoomRequirementType.Level && Character.Level < nextRoom.AccessLevel)
             {
                 Console.WriteLine(Localization.T("console.move.level_required", nextRoom.AccessLevel));
                 return;
             }
 
+            // v0.3 dungeons: deeper only from a cleared room. Online the server's per-party run
+            // decides (and the move happens there first); offline the local run does.
+            bool allowed = ConsoleHubClient.IsConnected
+                ? ConsoleHubClient.JoinRoomAsync(nextRoom.Id).GetAwaiter().GetResult()
+                : Myria.Lib.Core.Systems.Dungeons.LocalDungeonRuns.CanMove(Character.CurrentRoom, nextRoom);
+            if (!allowed)
+            {
+                Console.WriteLine(Localization.T(nextRoom.IsDungeonRoom ? "console.move.dungeon_locked" : "console.move.blocked"));
+                return;
+            }
+
+            var leftDungeon = Myria.Lib.Core.Systems.Dungeons.DungeonRules.DungeonIdOf(Character.CurrentRoom);
+            if (leftDungeon is not null && Myria.Lib.Core.Systems.Dungeons.DungeonRules.DungeonIdOf(nextRoom) != leftDungeon)
+            {
+                Console.WriteLine(Localization.T("console.move.dungeon_reset"));
+                foreach (var dungeonRoom in GameService.Rooms.Values.Where(r => r.DungonId == Character.CurrentRoom.DungonId))
+                    dungeonRoom.Corpses = new();
+            }
+
             if (nextRoom.IsCity && nextRoom.Npcs.Contains("Healer"))
                 Character.LastHealerRoomId = nextRoom.Id;
 
             Character.CurrentRoom = nextRoom;
-            _ = ConsoleHubClient.JoinRoomAsync(Character.CurrentRoom.Id);
+            Character.CurrentRoomId = nextRoom.Id;
+            Myria.Lib.Core.Systems.Dungeons.LocalDungeonRuns.NoteLocation(nextRoom);
             Console.WriteLine(Localization.T("console.move.moved", direction));
             Character.CurrentRoom.Describe();
         }

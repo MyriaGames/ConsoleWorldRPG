@@ -455,11 +455,26 @@ namespace Myria.ConsoleApp.Services
                 try { await _connection!.InvokeAsync("SetCharacterName", characterName); } catch { }
         }
 
-        public static async Task JoinRoomAsync(int roomId)
+        /// <summary>Moves on the server. False when it refuses (level/quest gates, or - v0.3 - a dungeon
+        /// room the party's run doesn't allow yet); true offline.</summary>
+        public static async Task<bool> JoinRoomAsync(int roomId)
         {
-            CurrentRoomCharacters.Clear();
+            if (!IsConnected) return true;
+            try
+            {
+                bool ok = await _connection!.InvokeAsync<bool>("JoinRoom", roomId);
+                if (ok) CurrentRoomCharacters.Clear();
+                return ok;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>v0.3: the caller's dungeon run from their current room (null outside dungeons).</summary>
+        public static async Task<DungeonRoomState?> GetDungeonStateAsync()
+        {
             if (IsConnected)
-                try { await _connection!.InvokeAsync("JoinRoom", roomId); } catch { }
+                try { return await _connection!.InvokeAsync<DungeonRoomState?>("GetDungeonState"); } catch { }
+            return null;
         }
 
         public static async Task SendMessageAsync(string message, string channel = "room", string? target = null)

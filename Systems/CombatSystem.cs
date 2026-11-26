@@ -6,8 +6,7 @@
 
         public static void StartEncounter(Character Character)
         {
-            if (Character.CurrentRoom.EncounterableMonsters is not { Count: > 0 }
-                || Character.CurrentRoom.IsCleared)
+            if (Character.CurrentRoom.EncounterableMonsters is not { Count: > 0 })
             {
                 Console.WriteLine("But nothing stirs in the darkness...");
                 return;
@@ -19,12 +18,32 @@
                 return;
             }
 
-            var monster = SelectMonster(Character);
+            // v0.3 dungeons: offline, a dungeon room fights the local run's pack, one at a time.
+            Myria.Lib.Core.Systems.CombatEncounter? encounter = null;
+            var run = Myria.Lib.Core.Systems.Dungeons.LocalDungeonRuns.For(Character.CurrentRoom);
+            Monster monster;
+            if (run is not null)
+            {
+                var pack = run.NextPack(Character.CurrentRoom, 1, () => encounter is null || encounter.Phase != CombatPhase.Finished);
+                if (pack.Count == 0)
+                {
+                    Console.WriteLine(Localization.T("dungeon.room_cleared"));
+                    return;
+                }
+                monster = pack[0];
+            }
+            else monster = SelectMonster(Character);
+
             Console.WriteLine($"\nA wild {Localization.T(monster.Name)} appears!");
             Console.WriteLine(Localization.T(monster.Description));
 
-            var encounter = new Myria.Lib.Core.Systems.CombatEncounter(Character, monster);
+            encounter = new Myria.Lib.Core.Systems.CombatEncounter(Character, monster);
             encounter.MonsterKilled += (_, e) => PrintQuestProgress(Character, monster);
+            if (run is not null)
+            {
+                int roomId = Character.CurrentRoom.Id;
+                encounter.MonsterKilled += (_, e) => { if (e.Monster is not null) run.RecordKill(roomId, e.Monster); };
+            }
 
             int logIndex = 1; // skip the "pg.fight.log.start" entry added by the constructor
             RunCombatLoop(encounter, Character, monster, ref logIndex);
@@ -46,6 +65,11 @@
         {
             var start = ConsoleHubClient.StartCombatAsync(Character.CurrentRoom.Id)
                             .GetAwaiter().GetResult();
+            if (start?.Reason == "room_cleared")
+            {
+                Console.WriteLine(Localization.T("dungeon.room_cleared"));
+                return;
+            }
             if (start is null || !start.Success)
             {
                 Console.WriteLine($"❌ Could not start encounter: {start?.Reason ?? "server unavailable"}");
@@ -203,24 +227,6 @@
         private static Monster SelectMonster(Character Character)
         {
             var room = Character.CurrentRoom;
-
-            if (room.IsDungeonRoom && room.CurrentMonsters.Count < 1)
-            {
-                if (room.IsBossRoom && room.Monsters.Count > 0)
-                {
-                    room.CurrentMonsters.Add(room.Monsters[0].Clone());
-                }
-                else
-                {
-                    int count = _random.Next(1, 11);
-                    for (int i = 0; i < count; i++)
-                        room.CurrentMonsters.Add(room.Monsters[_random.Next(0, room.Monsters.Count)].Clone());
-                }
-                return room.CurrentMonsters[_random.Next(0, room.CurrentMonsters.Count)];
-            }
-
-            if (room.IsDungeonRoom)
-                return room.CurrentMonsters[_random.Next(0, room.CurrentMonsters.Count)];
 
             return room.Monsters[_random.Next(0, room.Monsters.Count)].Clone();
         }
@@ -419,6 +425,7 @@
             Character.CurrentMana   = Character.MaxMana;
 
             Console.WriteLine($"🌀 You awaken in {respawnRoom.DisplayName()}.");
+            Myria.Lib.Core.Systems.Dungeons.LocalDungeonRuns.NoteLocation(respawnRoom);
             Character.ApplyDeathXpPenalty();
         }
     }

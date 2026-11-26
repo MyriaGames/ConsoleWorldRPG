@@ -77,6 +77,9 @@ namespace Myria.ConsoleApp.Utils
             if (room.Exits.Any())
                 Console.WriteLine(Localization.T("console.look.exits", string.Join(", ", room.Exits.Keys)));
 
+            if (room.IsDungeonRoom)
+                Console.WriteLine(room.DungeonStatus());
+
             if (room.IsCity && room.Npcs.Count > 0)
             {
                 Console.WriteLine(Localization.T("console.look.people_header"));

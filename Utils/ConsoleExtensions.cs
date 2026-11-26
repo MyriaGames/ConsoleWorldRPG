@@ -23,12 +23,40 @@ namespace Myria.ConsoleApp.Utils
             if (room.Exits.Any())
                 Console.WriteLine("Exits: " + string.Join(", ", room.Exits.Keys));
 
-            if (room.HasMonsters && !room.IsCleared)
+            if (room.IsDungeonRoom)
+            {
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine(room.DungeonStatus());
+                Console.ResetColor();
+            }
+            else if (room.HasMonsters)
             {
                 Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine("⚔ Danger lurks here.");
                 Console.ResetColor();
             }
+        }
+
+        /// <summary>
+        /// v0.3 dungeons: what's still alive in this room of the run, or that it's cleared. Online
+        /// from the server (the run is per party); offline from the local run.
+        /// </summary>
+        public static string DungeonStatus(this Room room)
+        {
+            IEnumerable<string> names;
+            if (ConsoleHubClient.IsConnected)
+            {
+                var state = ConsoleHubClient.GetDungeonStateAsync().GetAwaiter().GetResult();
+                names = state?.RoomId == room.Id ? state.Remaining.Select(m => m.Name) : Enumerable.Empty<string>();
+            }
+            else
+                names = Myria.Lib.Core.Systems.Dungeons.LocalDungeonRuns.For(room)?.Remaining(room).Select(m => m.Name)
+                        ?? Enumerable.Empty<string>();
+
+            var groups = names.GroupBy(n => n).Select(g => (g.Count() > 1 ? $"{g.Count()}× " : "") + Localization.T(g.Key)).ToList();
+            return groups.Count == 0
+                ? Localization.T("dungeon.room_cleared")
+                : "⚔ " + Localization.T("dungeon.remaining", string.Join(", ", groups));
         }
 
         public static void Describe(this Corpse corpse)
