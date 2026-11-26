@@ -47,17 +47,23 @@ namespace Myria.ConsoleApp.Services
         // certificate (no domain to get a publicly-trusted one for). Trust-on-first-use each
         // server address independently via TrustedServerCertStore (same mechanism as Myria.Wpf's
         // ServerApiService) instead of failing every such connection outright, which is what the
-        // default HttpClient would otherwise do.
+        // default HttpClient would otherwise do. A host that ever presented a publicly trusted
+        // certificate never falls back to TOFU, the official server never does, and a certificate
+        // for another name is never accepted (security review 2026-11-26, A04 F1).
         private static HttpMessageHandler CreatePinnedHandler() => new HttpClientHandler
         {
             ServerCertificateCustomValidationCallback = (request, cert, _, errors) =>
             {
-                if (errors == System.Net.Security.SslPolicyErrors.None) return true;
-                if (cert is null || request.RequestUri is null) return false;
-                var thumbprint = cert.GetCertHashString(HashAlgorithmName.SHA256);
-                return TrustedServerCertStore.TrustOnFirstUse(request.RequestUri.Authority, thumbprint);
+                if (request.RequestUri is null) return false;
+                return TrustedServerCertStore.IsAcceptable(
+                    request.RequestUri.Authority, request.RequestUri.Host,
+                    cert?.GetCertHashString(HashAlgorithmName.SHA256), errors, CaOnlyHosts);
             }
         };
+
+        /// <summary>Hosts with a publicly trusted certificate: an untrusted certificate for them is
+        /// always an attack, never a self-hosted server.</summary>
+        public static readonly IReadOnlyList<string> CaOnlyHosts = [new Uri(DefaultAuthBaseUrl).Host];
 
         private static readonly HttpClient _http = new(CreatePinnedHandler());
         private static readonly JsonSerializerOptions _jsonOpts = new() { PropertyNameCaseInsensitive = true };
