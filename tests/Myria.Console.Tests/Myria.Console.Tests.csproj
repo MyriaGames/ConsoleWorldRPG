@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!-- Myria.Console is an Exe; referencing it from a test project is fine and gives access to
+       its command handlers, printers and hub client without duplicating any of them. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\Myria.Console.csproj" />
+  </ItemGroup>
+
+  <!--
+    Localization.Load() reads these, and every user-facing string the console prints goes through
+    Localization.T(). Without them, assertions would only ever see raw locale keys. Linked from
+    Myria.Lib.Core (the shared base strings) plus Myria.Console's own additions, exactly as
+    Myria.Console.csproj wires them up at runtime.
+  -->
+  <ItemGroup>
+    <Content Include="..\..\..\Myria.Lib\Myria.Lib.Core\Data\locales\**\*.json" LinkBase="Data\locales\">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\..\Data\misc\locales\*.json" LinkBase="Data\misc\locales\">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>
