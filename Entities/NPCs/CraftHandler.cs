@@ -110,7 +110,7 @@ namespace Myria.ConsoleApp.Entities.NPCs
                         // J15: apply skill quality multiplier to equipment output
                         if (output is EquipmentItem crafted)
                         {
-                            crafted.CraftQuality = (float)JobXpService.GetSkillMultiplierFromXp(
+                            crafted.CraftQuality = (float)JobXpService.GetCraftQualityFromXp(
                                 JobManager.GetOrAdd(Character, jobId).SkillXp);
                             crafted.Bonuses = crafted.BaseStats.Scale(crafted.CraftQuality);
                         }

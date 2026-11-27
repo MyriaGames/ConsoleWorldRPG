@@ -47,7 +47,7 @@ namespace Myria.ConsoleApp.Entities.NPCs
                 else
                 {
                     // J16: apply skill quality before upgrading
-                    float quality = (float)JobXpService.GetSkillMultiplierFromXp(JobManager.GetOrAdd(Character, jobId).SkillXp);
+                    float quality = (float)JobXpService.GetCraftQualityFromXp(JobManager.GetOrAdd(Character, jobId).SkillXp);
                     if (quality > item.CraftQuality) item.CraftQuality = quality;
 
                     if (item.TryUpgrade(Character, maxUpgrade))
