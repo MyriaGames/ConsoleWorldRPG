@@ -608,5 +608,8 @@
   "ui_creation_name_set": "Charaktername gesetzt auf ",
   "ui_creation_choose_class": "Wähle eine Charakterklasse",
   "ui_creation_classes": "Klassen:",
-  "ui_creation_class_set": "Heldenklasse gesetzt auf "
+  "ui_creation_class_set": "Heldenklasse gesetzt auf ",
+  "console.help.desc.buffs": "Zeige deine anhaltenden Buffs (z.B. Grüne Lebenskraft) und ihre Restzeit",
+  "console.buffs.none": "Keine anhaltenden Buffs.",
+  "console.skill.lasting_hint": "Anhaltender Buff: +{0}% max. LP, +{1}% max. MP für {2} Minuten - 'cast' (du selbst) oder 'cast <Name>' (jemand hier), auch außerhalb von Kämpfen."
 }

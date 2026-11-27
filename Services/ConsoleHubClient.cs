@@ -826,6 +826,14 @@ namespace Myria.ConsoleApp.Services
             return false;
         }
 
+        /// <summary>Casts a lasting-buff skill (Verdant Vigor) outside a fight on yourself (null) or anyone here.</summary>
+        public static async Task<Myria.Lib.Core.Models.Dto.CastSkillResult> CastSkillOutOfCombatAsync(string skillId, string? targetName)
+        {
+            if (IsConnected)
+                try { return await _connection!.InvokeAsync<Myria.Lib.Core.Models.Dto.CastSkillResult>("CastSkillOutOfCombat", skillId, targetName); } catch { }
+            return new Myria.Lib.Core.Models.Dto.CastSkillResult(false, "Not connected", 0, null);
+        }
+
         public static async Task<bool> RespecSkillAsync(string skillId)
         {
             if (IsConnected)
@@ -1227,7 +1235,8 @@ namespace Myria.ConsoleApp.Services
                     PvpCurrency             = dto.PvpCurrency,
                     PvpWins                 = dto.PvpWins,
                     PvpLosses               = dto.PvpLosses,
-                    AdventurersGuildMember  = dto.AdventurersGuildMember
+                    AdventurersGuildMember  = dto.AdventurersGuildMember,
+                    LastingBuffs            = Myria.Lib.Core.Services.LastingBuffService.FromSnapshots(dto.LastingBuffs)
                 };
 
                 Character.CurrentRoom = RoomService.AllRooms.FirstOrDefault(r => r.Id == dto.CurrentRoomId);
@@ -1536,6 +1545,8 @@ namespace Myria.ConsoleApp.Services
             public int      PvpLosses               { get; set; }
             // v0.3 quest rework (read on load; the server ignores these on save)
             public bool     AdventurersGuildMember  { get; set; }
+            // v0.3 lasting buffs (read on load; server-authoritative, ignored on save)
+            public List<Myria.Lib.Core.Models.Dto.LastingBuffSnapshot> LastingBuffs { get; set; } = new();
             public List<DynamicQuestDto> DynamicQuests { get; set; } = new();
 
             public List<InventoryItemDto>   InventoryItems      { get; set; } = new();

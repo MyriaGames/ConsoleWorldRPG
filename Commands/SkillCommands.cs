@@ -5,6 +5,7 @@
         public static bool Handle(string input, Character Character)
         {
             if (input == "skills")  { ShowSkillsMenu(Character); return true; }
+            if (input == "buffs")   { ShowLastingBuffs(Character); return true; }
             if (input == "slots")   { SlotsMenu(Character);      return true; }
             if (input == "skill" || input.StartsWith("skill "))
             {
@@ -43,6 +44,10 @@
                     Console.WriteLine(Localization.T("console.skill.upgrade_line", i + 1, options[i].Description, UpgradeStatus(progress, options[i])));
 
                 string respecCost = new Money(SkillLevelingService.RespecCostBronze).ToString();
+                if (effective.LastingBuff is { } lb)
+                    Console.WriteLine(Localization.T("console.skill.lasting_hint",
+                        (lb.HpPercent * effective.ScalingFactor * 100).ToString("0.#"),
+                        (lb.MpPercent * effective.ScalingFactor * 100).ToString("0.#"), lb.DurationMinutes));
                 Console.WriteLine(Localization.T("console.skill.detail_commands_hint", respecCost));
                 Console.Write("> ");
                 string line = Console.ReadLine()?.Trim().ToLower() ?? "";
@@ -62,11 +67,54 @@
                 {
                     RespecSkill(Character, baseSkill, progress, respecCost);
                 }
+                else if ((line == "cast" || line.StartsWith("cast ")) && effective.LastingBuff != null)
+                {
+                    CastOutOfCombat(Character, effective, line.Length > 5 ? line[5..].Trim() : null);
+                }
                 else
                 {
                     Printer.PrintError(Localization.T("console.skill.unknown_detail_command"));
                 }
             }
+        }
+
+        /// <summary>
+        /// Casts a lasting-buff skill (v0.3; the Druid's Verdant Vigor) outside a fight: on yourself, or
+        /// online also on anyone in the same room. The console doesn't apply the server's
+        /// CharacterUpdated pushes, so the caster's side (mana, a buff on yourself, the skill use) is
+        /// mirrored locally from the result.
+        /// </summary>
+        private static void CastOutOfCombat(Character Character, Skill skill, string? target)
+        {
+            bool self = string.IsNullOrWhiteSpace(target) || string.Equals(target, Character.Name, StringComparison.OrdinalIgnoreCase);
+            if (!ConsoleHubClient.IsConnected)
+            {
+                if (!self) { Printer.PrintError(Localization.T("skill.cast.noTarget")); return; }
+                var buff = Myria.Lib.Core.Services.LastingBuffService.TryCast(Character, skill, Character, out var error);
+                if (buff == null) { Printer.PrintError(Localization.T(error ?? "skill.cast.notOutOfCombat")); return; }
+                CharacterService.SaveCharacter(LoginManager.UserAccount, Character);
+                Printer.PrintSuccess(Localization.T("skill.cast.done", Character.Name, Character.Name, skill.Name, skill.LastingBuff!.DurationMinutes));
+                return;
+            }
+
+            var result = ConsoleHubClient.CastSkillOutOfCombatAsync(skill.Id, self ? null : target).GetAwaiter().GetResult();
+            if (!result.Success) { Printer.PrintError(Localization.T(result.Reason ?? "skill.cast.notOutOfCombat")); return; }
+
+            Character.CurrentMana = result.CasterMana;
+            SkillLevelingService.GrantUsage(Character, skill.Id);
+            if (self && result.Buff is { } b)
+                Character.ApplyLastingBuff(Myria.Lib.Core.Services.LastingBuffService.FromSnapshots(new[] { b })[0]);
+            Printer.PrintSuccess(Localization.T("skill.cast.done", Character.Name, self ? Character.Name : target!, skill.Name, skill.LastingBuff!.DurationMinutes));
+        }
+
+        /// <summary>buffs: the character's lasting buffs and their remaining minutes.</summary>
+        private static void ShowLastingBuffs(Character Character)
+        {
+            Character.PruneLastingBuffs();
+            if (Character.LastingBuffs.Count == 0) { Console.WriteLine(Localization.T("console.buffs.none")); return; }
+            foreach (var b in Character.LastingBuffs)
+                Console.WriteLine("  " + Localization.T("buff.lasting.remaining", b.Name, (b.HpPercent * 100).ToString("0.#"),
+                    (b.MpPercent * 100).ToString("0.#"), Math.Max(1, (int)Math.Ceiling(b.Remaining.TotalMinutes))));
         }
 
         private static void BuyUpgrade(Character Character, Skill baseSkill, SkillUpgradeOption option)

@@ -615,5 +615,8 @@
   "console.login.realm_line": "{0}. {1} ({2})",
   "console.login.numbered_line": "{0}. {1}",
   "console.login.server_save_failed": "Server save failed. Character not created — try again.",
-  "console.login.server_load_failed": "Server load failed — try again."
+  "console.login.server_load_failed": "Server load failed — try again.",
+  "console.help.desc.buffs": "Show your lasting buffs (e.g. Verdant Vigor) and their remaining time",
+  "console.buffs.none": "No lasting buffs.",
+  "console.skill.lasting_hint": "Lasting buff: +{0}% max HP, +{1}% max MP for {2} minutes - 'cast' (yourself) or 'cast <name>' (anyone here), also outside fights."
 }
