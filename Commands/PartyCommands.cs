@@ -81,6 +81,12 @@
                 _ = ConsoleHubClient.KickFromPartyAsync(target);
                 Console.WriteLine(Localization.T("console.party.kick_sent", target));
             }
+            else if (sub == "lootmaster" || sub.StartsWith("lootmaster "))
+            {
+                string target = sub.Length > 10 ? sub[10..].Trim() : "";
+                _ = ConsoleHubClient.SetPartyLootMasterAsync(target.Length > 0 ? target : null);
+                Console.WriteLine(Localization.T("console.party.lootmaster_sent"));
+            }
             else if (sub.StartsWith("promote "))
             {
                 string target = sub[8..].Trim();

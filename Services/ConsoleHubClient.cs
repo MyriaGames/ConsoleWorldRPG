@@ -520,6 +520,12 @@ namespace Myria.ConsoleApp.Services
                 try { await _connection!.InvokeAsync("KickFromParty", targetName); } catch { }
         }
 
+        public static async Task SetPartyLootMasterAsync(string? targetName)
+        {
+            if (_connection?.State == HubConnectionState.Connected)
+                try { await _connection!.InvokeAsync("SetPartyLootMaster", targetName); } catch { }
+        }
+
         public static async Task TransferPartyLeaderAsync(string targetName)
         {
             if (IsConnected)
