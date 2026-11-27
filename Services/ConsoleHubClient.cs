@@ -94,6 +94,10 @@ namespace Myria.ConsoleApp.Services
         public static event Action<List<string>>?         RoomCharactersReceived;
         public static event Action<string, string>?       PartyInviteReceived;     // fromUsername, partyId
         public static event Action<List<string>, string?>? PartyUpdated;           // members, leader
+        /// <summary>Runs after SignalR's automatic reconnect (a new connection id): re-attach the
+        /// character server-side, which also puts it back into a PvP fight it dropped out of.</summary>
+        public static Func<Task>? ReconnectedHandler { get; set; }
+
         public static event Action?                        PartyDisbanded;
         public static event Action?                        KickedFromParty;
 
@@ -262,6 +266,12 @@ namespace Myria.ConsoleApp.Services
                 })
                 .WithAutomaticReconnect()
                 .Build();
+
+            _connection.Reconnected += async _ =>
+            {
+                if (ReconnectedHandler is { } h)
+                    try { await h(); } catch { }
+            };
 
             _connection.On<List<string>>("VersionMismatch", _ =>
                 Printer.PrintWarning(Localization.T("console.version_mismatch")));

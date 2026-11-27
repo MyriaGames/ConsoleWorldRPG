@@ -320,6 +320,18 @@ namespace Myria.ConsoleApp
 
             if (ConsoleHubClient.IsConnected)
             {
+                // The realm only accepts actions for a character this connection has loaded
+                // (LoadCharacter checks ownership); without it every session-based hub call -
+                // fights, PvP, skills, trades - was ignored. After an automatic reconnect it has to
+                // happen again on the new connection (and rejoins a PvP fight in progress).
+                async Task AttachAsync()
+                {
+                    await ConsoleHubClient.LoadCharacterOnServerAsync(Character.Name);
+                    await ConsoleHubClient.SetCharacterNameAsync(Character.Name);
+                    await ConsoleHubClient.JoinRoomAsync(Character.CurrentRoomId);
+                }
+                ConsoleHubClient.ReconnectedHandler = AttachAsync;
+                await ConsoleHubClient.LoadCharacterOnServerAsync(Character.Name);
                 await ConsoleHubClient.SetCharacterNameAsync(Character.Name);
                 await ConsoleHubClient.JoinRoomAsync(Character.CurrentRoomId);
                 Console.ForegroundColor = ConsoleColor.DarkGray;
